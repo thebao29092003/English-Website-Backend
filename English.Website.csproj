@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Api\ApiPayload\" />
+    <Folder Include="Api\CacheService\" />
+    <Folder Include="Api\Controllers\" />
+    <Folder Include="Api\Dtos\" />
+    <Folder Include="Api\Extensions\" />
+    <Folder Include="Application\Services\" />
+    <Folder Include="Application\Extend\" />
+    <Folder Include="Application\Dtos\" />
+    <Folder Include="Domain\Constants\" />
+    <Folder Include="Domain\Cores\BaseModel\" />
+    <Folder Include="Domain\Cores\Exceptions\" />
+    <Folder Include="Domain\Entities\" />
+    <Folder Include="Domain\Interfaces\" />
+    <Folder Include="Infrastructure\Repositories\IRepositories\" />
+    <Folder Include="Infrastructure\UnitOfWorks\IUnitOfWorks\" />
+  </ItemGroup>
+
+</Project>
