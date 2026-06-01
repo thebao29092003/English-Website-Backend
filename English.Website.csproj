@@ -7,25 +7,35 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <PackageReference Include="AutoMapper" Version="16.1.1" />
+    <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.27" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.3.10" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.27" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.27" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.27">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.27" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.27">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Scalar.AspNetCore" Version="2.14.14" />
+    <PackageReference Include="Swashbuckle.AspNetCore.Swagger" Version="8.1.4" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="8.1.4" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="8.1.4" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Api\ApiPayload\" />
     <Folder Include="Api\CacheService\" />
-    <Folder Include="Api\Controllers\" />
     <Folder Include="Api\Dtos\" />
-    <Folder Include="Api\Extensions\" />
-    <Folder Include="Application\Services\" />
     <Folder Include="Application\Extend\" />
     <Folder Include="Application\Dtos\" />
     <Folder Include="Domain\Constants\" />
     <Folder Include="Domain\Cores\BaseModel\" />
     <Folder Include="Domain\Cores\Exceptions\" />
-    <Folder Include="Domain\Entities\" />
-    <Folder Include="Domain\Interfaces\" />
-    <Folder Include="Infrastructure\Repositories\IRepositories\" />
-    <Folder Include="Infrastructure\UnitOfWorks\IUnitOfWorks\" />
   </ItemGroup>
 
 </Project>
