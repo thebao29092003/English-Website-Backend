@@ -78,6 +78,35 @@ namespace English.Website.Api.Controllers
             });
         }
 
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto requestDto)
+        {
+            var result = await _authService.RefreshToken(requestDto);
+
+            if (result == null)
+            {
+                return BadRequest(new APIResponseBase
+                {
+                    isResponseResult = false,
+                    success = false,
+                    endPointCode = "auth.refreshToken",
+                    status = (int)HttpStatusCode.BadRequest,
+                    value = null,
+                    message = "Invalid refresh token."
+                });
+            }
+
+            return Ok(new APIResponseBase
+            {
+                isResponseResult = true,
+                success = true,
+                endPointCode = "auth.refreshToken",
+                status = (int)HttpStatusCode.OK,
+                value = result,
+                message = MessageConstants.GetDataMessage(true, "refresh token")
+            });
+        }
+
         [Authorize]
         [HttpGet]
         public IActionResult TestAuth()
