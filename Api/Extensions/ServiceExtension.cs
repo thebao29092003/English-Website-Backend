@@ -19,6 +19,9 @@ namespace English.Website.Api.Extensions
 
             // 3. Đăng ký AutoMapper
             services.AddAutoMapper(typeof(MappingProfiles).Assembly);
+
+            // 4. Đăng ký MEMORY CACHE (RAM) CỦA .NET
+            services.AddMemoryCache();
         }
     }
 }

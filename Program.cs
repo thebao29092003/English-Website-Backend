@@ -1,5 +1,8 @@
 ﻿using English.Website.Api.Extensions;
+using English.Website.Domain.DatabaseContext;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
 
 
@@ -38,6 +41,57 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             // còn nếu không thêm bắt buộc phải dùng ClaimTypes.Role để phân quyền thì mới có thể dùng [Authorize(Roles = "Admin")]
             RoleClaimType = "Role" 
         };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                // Lấy các dịch vụ cần thiết từ DI Container của HTTP Context
+                var memoryCache = context.HttpContext.RequestServices.GetRequiredService<IMemoryCache>();
+                var dbContext = context.HttpContext.RequestServices.GetRequiredService<EnglishDBContext>();
+
+                // Lấy thông tin UserId và SecurityStamp được giải mã từ Token ra
+                var userIdClaim = context.Principal?.FindFirst("UserId")?.Value;
+                var tokenStamp = context.Principal?.FindFirst("SecurityStamp")?.Value;
+
+                if (string.IsNullOrEmpty(userIdClaim) || string.IsNullOrEmpty(tokenStamp))
+                {
+                    context.Fail("Token không hợp lệ (Thiếu thông tin nhận diện).");
+                    return;
+                }
+
+                string cacheKey = $"security-stamp:{userIdClaim}";
+
+                if (!memoryCache.TryGetValue(cacheKey, out string? validStamp))
+                {
+                    // 2. CACHE MISS: Nếu RAM chưa lưu, truy vấn database để lấy Stamp mới nhất
+                    var userId = Guid.Parse(userIdClaim);
+                    var user = await dbContext.Users
+                        .AsNoTracking() // Tối ưu truy vấn nhanh không cần tracking
+                        .FirstOrDefaultAsync(u => u.UserId == userId);
+
+                    if (user == null)
+                    {
+                        context.Fail("Người dùng không tồn tại.");
+                        return;
+                    }
+
+                    validStamp = user.SecurityStamp;
+
+                    // 3. LƯU VÀO RAM TRONG 10 PHÚT: Để các request sau không phải gọi DB nữa
+                    var cacheEntryOptions = new MemoryCacheEntryOptions()
+                        .SetAbsoluteExpiration(TimeSpan.FromMinutes(10));
+
+                    memoryCache.Set(cacheKey, validStamp, cacheEntryOptions);
+                }
+
+                // 4.SO SÁNH: Nếu Stamp trong Token lệch với Stamp hợp lệ->Chặn đứng ngay
+                if (tokenStamp != validStamp)
+                {
+                    context.Fail("Phiên đăng nhập đã bị vô hiệu hóa (Người dùng đã đăng xuất hoặc đổi mật khẩu).");
+                }
+            }
+        };
     });
 
 var app = builder.Build();
@@ -51,6 +105,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

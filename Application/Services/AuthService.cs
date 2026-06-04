@@ -3,6 +3,7 @@ using English.Website.Domain.DatabaseContext;
 using English.Website.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -16,25 +17,31 @@ namespace English.Website.Application.Services
     {
         private readonly EnglishDBContext _context;
         private readonly IConfiguration _configuration;
-        public AuthService(EnglishDBContext context, IConfiguration configuration)
+        private readonly IMemoryCache _memoryCache;
+
+        public AuthService(EnglishDBContext context, IConfiguration configuration, IMemoryCache memoryCache)
         {
             _context = context;
             _configuration = configuration;
+            _memoryCache = memoryCache;
         }
 
-        public async Task<bool> Register(UserDto userDto)
+        public async Task<bool> Register(RegisterDto registerDto)
         {
-            var isExistingUser = await _context.Users.AnyAsync(u => u.Username == userDto.Username);
+            var isExistingUser = await _context.Users.AnyAsync(u => u.Username == registerDto.Username);
             if (isExistingUser)
             {
                 return false;
             }
 
             User userNew = new User();
-            var hashedPassword = new PasswordHasher<User>().HashPassword(userNew, userDto.Password);
+            var hashedPassword = new PasswordHasher<User>().HashPassword(userNew, registerDto.Password);
 
-            userNew.Username = userDto.Username;
+            userNew.Username = registerDto.Username;
             userNew.Password = hashedPassword;
+
+            // 👇 TẠO STAMP MỚI KHI ĐĂNG KÝ
+            userNew.SecurityStamp = Guid.NewGuid().ToString();
 
             _context.Users.Add(userNew);
             await _context.SaveChangesAsync();
@@ -67,7 +74,8 @@ namespace English.Website.Application.Services
             {
                 new Claim("Email", user.Username),
                 new Claim("UserId", user.UserId.ToString()),
-                new Claim("Role", user.Role)
+                new Claim("Role", user.Role),
+                new Claim("SecurityStamp", user.SecurityStamp)
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration.GetValue<string>("AppSettings:SecretKey")!));
@@ -78,21 +86,21 @@ namespace English.Website.Application.Services
                 issuer: _configuration.GetValue<string>("AppSettings:Issuer"),
                 audience: _configuration.GetValue<string>("AppSettings:Audience"),
                 claims: claims,
-                expires: DateTime.UtcNow.AddDays(1),
+                expires: DateTime.UtcNow.AddMinutes(20),
                 signingCredentials: creds
             );
 
             return new JwtSecurityTokenHandler().WriteToken(tokenDescriptor);
         }
 
-        public async Task<TokenResponseDto?> RefreshToken(RefreshTokenRequestDto requestDto)
+        public async Task<TokenResponseDto?> RefreshToken(string refreshToken)
         {
-            var user = await ValidateRefreshToken(requestDto);
+            var user = await ValidateRefreshToken(refreshToken);
             if (user == null)
             {
                 return null;
             }
-            TokenResponseDto response = await CreateTokenResponse(user);
+            var response = await CreateTokenResponse(user);
             return response;
         }
 
@@ -105,11 +113,10 @@ namespace English.Website.Application.Services
             };
         }
 
-        private async Task<User?> ValidateRefreshToken(RefreshTokenRequestDto requestDto)
+        private async Task<User?> ValidateRefreshToken(string  refreshToken)
         {
-            var user = await _context.Users.FindAsync(requestDto.UserId);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.RefreshToken == refreshToken);
             if (user == null ||
-                user.RefreshToken != requestDto.RefreshToken ||
                 user.RefreshTokenExpiryTime <= DateTime.UtcNow
             )
             {
@@ -135,6 +142,27 @@ namespace English.Website.Application.Services
             user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
             await _context.SaveChangesAsync();
             return refreshToken;
+        }
+
+        public async Task<bool> Logout(string userId)
+        {
+
+            var user = await _context.Users.FindAsync(Guid.Parse(userId));
+            if (user == null)
+            {
+                return false;
+            }
+
+            // 1. Thay đổi SecurityStamp trong DB -> Toàn bộ Access Token cũ sẽ bị vô hiệu hóa
+            user.SecurityStamp = Guid.NewGuid().ToString();
+
+            user.RefreshToken = null;
+            user.RefreshTokenExpiryTime = null;
+
+            string cacheKey = $"security-stamp:{userId}";
+            _memoryCache.Remove(cacheKey);
+            await _context.SaveChangesAsync();
+            return true;
         }
     }
 }

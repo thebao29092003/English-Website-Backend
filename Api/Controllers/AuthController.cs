@@ -22,9 +22,9 @@ namespace English.Website.Api.Controllers
         }
 
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] UserDto userDto)
+        public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
         {
-            var result = await _authService.Register(userDto);
+            var result = await _authService.Register(registerDto);
             if (!result)
             {
                 return BadRequest(new APIResponseBase
@@ -49,6 +49,20 @@ namespace English.Website.Api.Controllers
             });
         }
 
+        private void SetRefreshTokenInCookie(string refreshToken)
+        {
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true, // 👈 Bảo vệ khỏi XSS (React không đọc được)
+                Secure = true,   // 👈 Chỉ gửi qua HTTPS (khi deploy thật)
+                SameSite = SameSiteMode.Lax, // 👈 Chống tấn công CSRF
+                Expires = DateTime.UtcNow.AddDays(7) // Khớp với hạn của RefreshToken
+            };
+
+            // Ghi cookie tên là "refreshToken" vào trình duyệt của client
+            Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
+        }
+
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] UserDto userDto)
         {
@@ -67,21 +81,41 @@ namespace English.Website.Api.Controllers
                 });
             }
 
+            SetRefreshTokenInCookie(result.Item2!.RefreshToken);
+
             return Ok(new APIResponseBase
             {
                 isResponseResult = true,
                 success = true,
                 endPointCode = "auth.login",
                 status = (int)HttpStatusCode.OK,
-                value = result.Item2,
+                value = result.Item2.AccessToken,
                 message = MessageConstants.GetDataMessage(true, "user")
             });
         }
 
         [HttpPost("refresh-token")]
-        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto requestDto)
+        public async Task<IActionResult> RefreshToken()
         {
-            var result = await _authService.RefreshToken(requestDto);
+
+            // 👇 Đọc trực tiếp từ Cookie mà trình duyệt tự động gửi kèm lên
+            var refreshToken = Request.Cookies["refreshToken"];
+
+
+            if (string.IsNullOrEmpty(refreshToken))
+            {
+                return BadRequest(new APIResponseBase
+                {
+                    isResponseResult = false,
+                    success = false,
+                    endPointCode = "auth.refreshToken",
+                    status = (int)HttpStatusCode.BadRequest,
+                    value = null,
+                    message = MessageConstants.GetFoundMessage(false, "refresh token")
+                });
+            }
+
+            var result = await _authService.RefreshToken(refreshToken);
 
             if (result == null)
             {
@@ -96,19 +130,51 @@ namespace English.Website.Api.Controllers
                 });
             }
 
+            SetRefreshTokenInCookie(result.RefreshToken);
+
             return Ok(new APIResponseBase
             {
                 isResponseResult = true,
                 success = true,
                 endPointCode = "auth.refreshToken",
                 status = (int)HttpStatusCode.OK,
-                value = result,
+                value = result.AccessToken,
                 message = MessageConstants.GetDataMessage(true, "refresh token")
             });
         }
-
+        [HttpPost("logout")]
         [Authorize]
+        public async Task<IActionResult> Logout()
+        {
+            var userId = User.FindFirst("UserId")!.Value;
+            var result = await _authService.Logout(userId);
+
+            if (!result)
+            {
+                return BadRequest(new APIResponseBase
+                {
+                    isResponseResult = false,
+                    success = false,
+                    endPointCode = "auth.logout",
+                    status = (int)HttpStatusCode.BadRequest,
+                    value = null,
+                    message = "Invalid user ID."
+                });
+            }
+
+            return Ok(new APIResponseBase
+            {
+                isResponseResult = true,
+                success = true,
+                endPointCode = "auth.logout",
+                status = (int)HttpStatusCode.OK,
+                value = result,
+                message = "Logout successful."
+            });
+        }
+
         [HttpGet]
+        [Authorize]
         public IActionResult TestAuth()
         {
             return Ok(new APIResponseBase
