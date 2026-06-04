@@ -15,12 +15,13 @@ namespace English.Website.Api.Extensions
                 options.UseSqlServer(configuration.GetConnectionString("englistWebsite")));
 
             // 2. Đăng ký Database Services (Không dùng Interface)
-            services.AddScoped<AudioService>();
-            //services.AddScoped<RecordingService>();
-            //services.AddScoped<ScoreService>();
+            services.AddScoped<AuthService>();
 
             // 3. Đăng ký AutoMapper
             services.AddAutoMapper(typeof(MappingProfiles).Assembly);
+
+            // 4. Đăng ký MEMORY CACHE (RAM) CỦA .NET
+            services.AddMemoryCache();
         }
     }
 }

@@ -28,5 +28,12 @@
                 ? $"{model} found."
                 : $"{model} not found.";
         }
+
+        public static string GetExistMessage(bool isSuccess, string model)
+        {
+            return isSuccess
+                ? $"{model} exist."
+                : $"{model} not exist.";
+        }
     }
 }

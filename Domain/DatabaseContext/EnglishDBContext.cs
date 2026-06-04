@@ -9,6 +9,6 @@ namespace English.Website.Domain.DatabaseContext
         {
          
         }
-        public DbSet<VideoGame> VideoGames { get; set; }
+        public DbSet<User> Users { get; set; }
     }
 }
