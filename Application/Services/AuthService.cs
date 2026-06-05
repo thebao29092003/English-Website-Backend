@@ -113,7 +113,7 @@ namespace English.Website.Application.Services
             };
         }
 
-        private async Task<User?> ValidateRefreshToken(string  refreshToken)
+        private async Task<User?> ValidateRefreshToken(string refreshToken)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.RefreshToken == refreshToken);
             if (user == null ||
@@ -128,11 +128,13 @@ namespace English.Website.Application.Services
         private string CreateRefreshToken()
         {
             var randomNumber = new byte[32];
-            using (var rng = RandomNumberGenerator.Create())
-            {
-                rng.GetBytes(randomNumber);
-                return Convert.ToBase64String(randomNumber);
-            }
+
+            // using dùng để giải phóng tài nguyên sau khi sử dụng xong, ở đây là đối tượng RandomNumberGenerator
+            using var rng = RandomNumberGenerator.Create();
+
+            rng.GetBytes(randomNumber);
+            return Convert.ToBase64String(randomNumber);
+
         }
 
         private async Task<string> SaveRefreshToken(User user)

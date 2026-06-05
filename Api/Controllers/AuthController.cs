@@ -9,8 +9,6 @@ using whOperation.API.APIPayload;
 namespace English.Website.Api.Controllers
 {
 
-    // CẦN XEM LẠI KHI NÀO RESPONSE VALUE KHI NÀO RESPONE MESSGARE 
-    // THỐNG NHẤT HIỆN LÊN CHO USER THẤY THÔNG BÁO SẼ LÀ MESSAGE
     [Route("api/auth")]
     [ApiController]
     public class AuthController : ControllerBase

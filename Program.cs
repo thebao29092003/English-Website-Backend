@@ -44,6 +44,7 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
         options.Events = new JwtBearerEvents
         {
+            // Sự kiện OnTokenValidated chạy ngay sau khi token đã vượt qua các bước kiểm tra cơ bản ở trên
             OnTokenValidated = async context =>
             {
                 // Lấy các dịch vụ cần thiết từ DI Container của HTTP Context
@@ -62,6 +63,8 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
                 string cacheKey = $"security-stamp:{userIdClaim}";
 
+                // Vì mỗi request đều phải kiểm tra bước này, nếu request nào cũng gọi Database (DB) thì server sẽ rất chậm.
+                // Do đó, code sẽ ưu tiên kiểm tra trong RAM (MemoryCache) trước
                 if (!memoryCache.TryGetValue(cacheKey, out string? validStamp))
                 {
                     // 2. CACHE MISS: Nếu RAM chưa lưu, truy vấn database để lấy Stamp mới nhất
