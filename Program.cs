@@ -82,10 +82,7 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     validStamp = user.SecurityStamp;
 
                     // 3. LƯU VÀO RAM TRONG 10 PHÚT: Để các request sau không phải gọi DB nữa
-                    var cacheEntryOptions = new MemoryCacheEntryOptions()
-                        .SetAbsoluteExpiration(TimeSpan.FromMinutes(10));
-
-                    memoryCache.Set(cacheKey, validStamp, cacheEntryOptions);
+                    memoryCache.Set(cacheKey, validStamp, TimeSpan.FromMinutes(10));
                 }
 
                 // 4.SO SÁNH: Nếu Stamp trong Token lệch với Stamp hợp lệ->Chặn đứng ngay

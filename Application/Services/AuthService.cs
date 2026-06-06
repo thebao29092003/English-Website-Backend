@@ -1,4 +1,5 @@
 ﻿using English.Website.Api.Dtos.AuthDtos;
+using English.Website.Application.Services.IServices;
 using English.Website.Domain.DatabaseContext;
 using English.Website.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
@@ -18,20 +19,61 @@ namespace English.Website.Application.Services
         private readonly EnglishDBContext _context;
         private readonly IConfiguration _configuration;
         private readonly IMemoryCache _memoryCache;
+        private readonly IEmailService _emailService;
 
-        public AuthService(EnglishDBContext context, IConfiguration configuration, IMemoryCache memoryCache)
+        public AuthService(
+            EnglishDBContext context,
+            IConfiguration configuration,
+            IMemoryCache memoryCache,
+            IEmailService emailService
+        )
         {
             _context = context;
             _configuration = configuration;
             _memoryCache = memoryCache;
+            _emailService = emailService;
         }
 
-        public async Task<bool> Register(RegisterDto registerDto)
+        public async Task<(bool, string)> SendRegisterOtp(string toEmail)
         {
+            var isExistingUser = await _context.Users.AnyAsync(u => u.Username == toEmail);
+            if (isExistingUser)
+            {
+                return (false, "Account already exists.");
+            }
+
+            var otp = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
+
+            // 3. Lưu vào RAM trong vòng 5 phút
+            string cacheKey = $"reg-otp:{toEmail}";
+            _memoryCache.Set(cacheKey, otp, TimeSpan.FromMinutes(10));
+
+            string subject = "Mã xác nhận đăng ký tài khoản - English Website";
+            string body = $"<h3>Chào mừng bạn đến với English Website!</h3>" +
+                     $"<p>Mã OTP của bạn là: <strong>{otp}</strong></p>" +
+                     $"<p>Mã này có hiệu lực trong vòng 5 phút. Vui lòng tuyệt đối không chia sẻ mã này với bất kỳ ai.</p>";
+            await _emailService.SendEmailAsync(toEmail, subject, body);
+            return (true, "OTP sent successfully.");
+        }
+
+        public async Task<(bool, string)> Register(RegisterDto registerDto)
+        {
+
+            //// 1. Kiểm tra OTP trong RAM
+            string cacheKey = $"reg-otp:{registerDto.Username}";
+            if (
+                !_memoryCache.TryGetValue(cacheKey, out string? validOtp) ||
+                validOtp != registerDto.Otp
+                )
+            {
+                return (false, "Otp invalid or expired.");
+            }
+
+            // 2. Kiểm tra lại trùng lặp email đề phòng race condition
             var isExistingUser = await _context.Users.AnyAsync(u => u.Username == registerDto.Username);
             if (isExistingUser)
             {
-                return false;
+                return (false, "Account already exists.");
             }
 
             User userNew = new User();
@@ -46,7 +88,11 @@ namespace English.Website.Application.Services
             _context.Users.Add(userNew);
             await _context.SaveChangesAsync();
 
-            return true;
+
+            // 4. Xóa mã OTP khỏi RAM sau khi đăng ký thành công
+            _memoryCache.Remove(cacheKey);
+
+            return (true, "User registered successfully.");
         }
 
         public async Task<(bool, TokenResponseDto?)> Login(UserDto userDto)

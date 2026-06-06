@@ -19,11 +19,39 @@ namespace English.Website.Api.Controllers
             _authService = authService;
         }
 
+        [HttpPost("register/send-otp")]
+        public async Task<IActionResult> SendRegisterOtp([FromQuery] string email)
+        {
+            var (success, message) = await _authService.SendRegisterOtp(email);
+            if (!success)
+            {
+                return BadRequest(new APIResponseBase
+                {
+                    isResponseResult = false,
+                    success = false,
+                    endPointCode = "auth.register.send-otp",
+                    status = (int)HttpStatusCode.BadRequest,
+                    value = null,
+                    message = message
+                });
+            }
+
+            return Ok(new APIResponseBase
+            {
+                isResponseResult = false,
+                success = true,
+                endPointCode = "auth.register.send-otp",
+                status = (int)HttpStatusCode.OK,
+                value = null,
+                message = message
+            });
+        }
+
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
         {
-            var result = await _authService.Register(registerDto);
-            if (!result)
+            var (success, message) = await _authService.Register(registerDto);
+            if (!success)
             {
                 return BadRequest(new APIResponseBase
                 {
@@ -32,7 +60,7 @@ namespace English.Website.Api.Controllers
                     endPointCode = "auth.register",
                     status = (int)HttpStatusCode.BadRequest,
                     value = null,
-                    message = MessageConstants.GetExistMessage(true, "user")
+                    message = message
                 });
             }
 
@@ -43,7 +71,7 @@ namespace English.Website.Api.Controllers
                 endPointCode = "auth.register",
                 status = (int)HttpStatusCode.Created,
                 value = null,
-                message = MessageConstants.GetInsertMessage(true, "user")
+                message = message
             });
         }
 
