@@ -1,4 +1,5 @@
 ﻿using English.Website.Api.Dtos.AuthDtos;
+using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services.IServices;
 using English.Website.Domain.DatabaseContext;
 using English.Website.Domain.Entities;
@@ -13,25 +14,21 @@ namespace English.Website.Application.Services
     {
         private readonly EnglishDBContext _context;
         private readonly IEmailService _emailService;
-        private readonly IConfiguration _configuration;
         private readonly IMemoryCache _memoryCache;
 
-        public ForgetPasswordService(EnglishDBContext context, IEmailService emailService, IConfiguration configuration, IMemoryCache memoryCache)
+        public ForgetPasswordService(EnglishDBContext context, IEmailService emailService, IMemoryCache memoryCache)
         {
             _context = context;
             _emailService = emailService;
-            _configuration = configuration;
             _memoryCache = memoryCache;
         }
 
-        public async Task<(bool Success, string Message)> SendResetPasswordOtp(string email)
+        public async Task SendResetPasswordOtp(string email)
         {
             // 1. Kiểm tra xem Email này có tồn tại trong hệ thống chưa
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == email);
-            if (user == null)
-            {
-                return (false, "Email not exist.");
-            }
+            var user = 
+                await _context.Users.FirstOrDefaultAsync(u => u.Username == email) 
+                ?? throw new BadRequestException("Email not exist.");
 
             // 2. Sinh mã OTP 6 số
             var otp = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
@@ -47,26 +44,22 @@ namespace English.Website.Application.Services
                           $"<p>Mã này có hiệu lực trong vòng 5 phút. Nếu không phải bạn yêu cầu, vui lòng đổi mật khẩu tài khoản ngay lập tức.</p>";
 
             await _emailService.SendEmailAsync(email, subject, body);
-
-            return (true, "Mã khôi phục đã được gửi đến email của bạn.");
         }
 
-        public async Task<(bool Success, string Message)> ResetPasswordWithOtp(ResetPasswordRequestDto dto)
+        public async Task ResetPasswordWithOtp(ResetPasswordRequestDto dto)
         {
             // 1. Kiểm tra OTP trong RAM
             string cacheKey = $"reset-otp:{dto.Email}";
             if (!_memoryCache.TryGetValue(cacheKey, out string? validOtp) || validOtp != dto.Otp)
             {
-                return (false, "Invalid OTP or OTP has expired.");
+                throw new BadRequestException("Invalid or expired OTP.");
             }
 
             // 2. Tìm người dùng
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == dto.Email);
-            if (user == null)
-            {
-                return (false, "Email not exist.");
-            }
-
+            var user = 
+                await _context.Users.FirstOrDefaultAsync(u => u.Username == dto.Email) 
+                ?? throw new BadRequestException("User not exist.");
+            
             // 3. Đặt mật khẩu mới
             var hashedPassword = new PasswordHasher<User>().HashPassword(user, dto.NewPassword);
             user.Password = hashedPassword;
@@ -84,8 +77,6 @@ namespace English.Website.Application.Services
 
             // Xóa luôn cache SecurityStamp của user này để bắt buộc nạp lại từ DB
             _memoryCache.Remove($"security-stamp:{user.UserId}");
-
-            return (true, "Reset password successfully.");
         }
     }
 }

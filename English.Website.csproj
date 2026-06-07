@@ -35,7 +35,6 @@
     <Folder Include="Application\Dtos\" />
     <Folder Include="Domain\Constants\" />
     <Folder Include="Domain\Cores\BaseModel\" />
-    <Folder Include="Domain\Cores\Exceptions\" />
     <Folder Include="Domain\DatabaseContext\" />
   </ItemGroup>
 

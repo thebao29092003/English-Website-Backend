@@ -22,20 +22,7 @@ namespace English.Website.Api.Controllers
         [HttpPost("send-otp")]
         public async Task<IActionResult> SendRegisterOtp([FromQuery] string email)
         {
-            var (success, message) = await _forgetPasswordService.SendResetPasswordOtp(email);
-            if (!success)
-            {
-                return BadRequest(new APIResponseBase
-                {
-                    isResponseResult = false,
-                    success = false,
-                    endPointCode = "auth.forget-password.send-otp",
-                    status = (int)HttpStatusCode.BadRequest,
-                    value = null,
-                    message = message
-                });
-            }
-
+            await _forgetPasswordService.SendResetPasswordOtp(email);
             return Ok(new APIResponseBase
             {
                 isResponseResult = false,
@@ -43,27 +30,14 @@ namespace English.Website.Api.Controllers
                 endPointCode = "auth.forget-password.send-otp",
                 status = (int)HttpStatusCode.OK,
                 value = null,
-                message = message
+                message = "OTP sent successfully."
             });
         }
 
         [HttpPost("reset")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDto dto)
         {
-            var (success, message) = await _forgetPasswordService.ResetPasswordWithOtp(dto);
-            if (!success)
-            {
-                return BadRequest(new APIResponseBase
-                {
-                    isResponseResult = false,
-                    success = false,
-                    endPointCode = "auth.forget-password.reset",
-                    status = (int)HttpStatusCode.BadRequest,
-                    value = null,
-                    message = message
-                });
-            }
-
+            await _forgetPasswordService.ResetPasswordWithOtp(dto);
             return Ok(new APIResponseBase
             {
                 isResponseResult = false,
@@ -71,7 +45,7 @@ namespace English.Website.Api.Controllers
                 endPointCode = "auth.forget-password.reset",
                 status = (int)HttpStatusCode.Created,
                 value = null,
-                message = message
+                message = "Password reset successful."
             });
         }
     }

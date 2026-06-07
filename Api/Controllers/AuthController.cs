@@ -22,20 +22,7 @@ namespace English.Website.Api.Controllers
         [HttpPost("register/send-otp")]
         public async Task<IActionResult> SendRegisterOtp([FromQuery] string email)
         {
-            var (success, message) = await _authService.SendRegisterOtp(email);
-            if (!success)
-            {
-                return BadRequest(new APIResponseBase
-                {
-                    isResponseResult = false,
-                    success = false,
-                    endPointCode = "auth.register.send-otp",
-                    status = (int)HttpStatusCode.BadRequest,
-                    value = null,
-                    message = message
-                });
-            }
-
+            await _authService.SendRegisterOtp(email);
             return Ok(new APIResponseBase
             {
                 isResponseResult = false,
@@ -43,27 +30,14 @@ namespace English.Website.Api.Controllers
                 endPointCode = "auth.register.send-otp",
                 status = (int)HttpStatusCode.OK,
                 value = null,
-                message = message
+                message = "OTP sent successfully."
             });
         }
 
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
         {
-            var (success, message) = await _authService.Register(registerDto);
-            if (!success)
-            {
-                return BadRequest(new APIResponseBase
-                {
-                    isResponseResult = false,
-                    success = false,
-                    endPointCode = "auth.register",
-                    status = (int)HttpStatusCode.BadRequest,
-                    value = null,
-                    message = message
-                });
-            }
-
+            await _authService.Register(registerDto);
             return Ok(new APIResponseBase
             {
                 isResponseResult = false,
@@ -71,22 +45,8 @@ namespace English.Website.Api.Controllers
                 endPointCode = "auth.register",
                 status = (int)HttpStatusCode.Created,
                 value = null,
-                message = message
+                message = "Registration successful."
             });
-        }
-
-        private void SetRefreshTokenInCookie(string refreshToken)
-        {
-            var cookieOptions = new CookieOptions
-            {
-                HttpOnly = true, // 👈 Bảo vệ khỏi XSS (React không đọc được)
-                Secure = true,   // 👈 Chỉ gửi qua HTTPS (khi deploy thật)
-                SameSite = SameSiteMode.Lax, // 👈 Chống tấn công CSRF
-                Expires = DateTime.UtcNow.AddDays(7) // Khớp với hạn của RefreshToken
-            };
-
-            // Ghi cookie tên là "refreshToken" vào trình duyệt của client
-            Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
         }
 
         [HttpPost("login")]
@@ -94,28 +54,13 @@ namespace English.Website.Api.Controllers
         {
             var result = await _authService.Login(userDto);
 
-            if (!result.Item1)
-            {
-                return BadRequest(new APIResponseBase
-                {
-                    isResponseResult = false,
-                    success = false,
-                    endPointCode = "auth.login",
-                    status = (int)HttpStatusCode.BadRequest,
-                    value = null,
-                    message = "Invalid username or password."
-                });
-            }
-
-            SetRefreshTokenInCookie(result.Item2!.RefreshToken);
-
             return Ok(new APIResponseBase
             {
                 isResponseResult = true,
                 success = true,
                 endPointCode = "auth.login",
                 status = (int)HttpStatusCode.OK,
-                value = result.Item2.AccessToken,
+                value = result.AccessToken,
                 message = MessageConstants.GetDataMessage(true, "user")
             });
         }
@@ -123,41 +68,7 @@ namespace English.Website.Api.Controllers
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken()
         {
-
-            // 👇 Đọc trực tiếp từ Cookie mà trình duyệt tự động gửi kèm lên
-            var refreshToken = Request.Cookies["refreshToken"];
-
-
-            if (string.IsNullOrEmpty(refreshToken))
-            {
-                return BadRequest(new APIResponseBase
-                {
-                    isResponseResult = false,
-                    success = false,
-                    endPointCode = "auth.refreshToken",
-                    status = (int)HttpStatusCode.BadRequest,
-                    value = null,
-                    message = MessageConstants.GetFoundMessage(false, "refresh token")
-                });
-            }
-
-            var result = await _authService.RefreshToken(refreshToken);
-
-            if (result == null)
-            {
-                return BadRequest(new APIResponseBase
-                {
-                    isResponseResult = false,
-                    success = false,
-                    endPointCode = "auth.refreshToken",
-                    status = (int)HttpStatusCode.BadRequest,
-                    value = null,
-                    message = "Invalid refresh token."
-                });
-            }
-
-            SetRefreshTokenInCookie(result.RefreshToken);
-
+            var result = await _authService.RefreshToken();
             return Ok(new APIResponseBase
             {
                 isResponseResult = true,
@@ -168,25 +79,13 @@ namespace English.Website.Api.Controllers
                 message = MessageConstants.GetDataMessage(true, "refresh token")
             });
         }
+
         [HttpPost("logout")]
         [Authorize]
         public async Task<IActionResult> Logout()
         {
             var userId = User.FindFirst("UserId")!.Value;
             var result = await _authService.Logout(userId);
-
-            if (!result)
-            {
-                return BadRequest(new APIResponseBase
-                {
-                    isResponseResult = false,
-                    success = false,
-                    endPointCode = "auth.logout",
-                    status = (int)HttpStatusCode.BadRequest,
-                    value = null,
-                    message = "Invalid user ID."
-                });
-            }
 
             return Ok(new APIResponseBase
             {
