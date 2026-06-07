@@ -31,7 +31,7 @@
 
   <ItemGroup>
     <Folder Include="Api\CacheService\" />
-    <Folder Include="Application\Extend\" />
+    <Folder Include="Api\Extensions\AIOutputText\" />
     <Folder Include="Application\Dtos\" />
     <Folder Include="Domain\Constants\" />
     <Folder Include="Domain\Cores\BaseModel\" />

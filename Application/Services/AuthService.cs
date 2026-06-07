@@ -49,7 +49,7 @@ namespace English.Website.Application.Services
             var httpContext = _httpContextAccessor.HttpContext;
             if (httpContext == null)
             {
-                throw new InvalidOperationException("No HttpContext available");
+                throw new BadRequestException("No HttpContext available");
             }
             var cookieOptions = new CookieOptions
             {

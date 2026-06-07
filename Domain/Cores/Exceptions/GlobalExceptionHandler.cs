@@ -39,7 +39,7 @@ namespace English.Website.Domain.Cores.Exceptions
         )
         {
             // 1. Ghi log lỗi vào hệ thống terminal khi mà chạy chương trình
-            _logger.LogError(exception, "Phát hiện lỗi chưa được xử lý: {Message}", exception.Message);
+            _logger.LogError(exception, "Error not handler: {Message}", exception.Message);
 
             int statusCode;
             string message;
@@ -56,7 +56,7 @@ namespace English.Website.Domain.Cores.Exceptions
             {
                 // LỖI 500: Lỗi hệ thống ngoài ý muốn (sập database, lỗi code, lỗi null pointer...)
                 statusCode = StatusCodes.Status500InternalServerError;
-                message = "Đã xảy ra lỗi hệ thống nghiêm trọng. Vui lòng thử lại sau hoặc liên hệ quản trị viên.";
+                message = "Important Error";
 
                 // 👇 GỬI EMAIL CẢNH BÁO CHO BẠN (ADMIN) KHI SẬP NGUỒN 500
                 try
@@ -66,7 +66,7 @@ namespace English.Website.Domain.Cores.Exceptions
                 catch (Exception emailEx)
                 {
                     // Tránh việc lỗi gửi mail làm sập tiếp luồng xử lý chính
-                    _logger.LogError(emailEx, "Không thể gửi email báo lỗi 500 cho quản trị viên.");
+                    _logger.LogError(emailEx, "Not email admin");
                 }
             }
 

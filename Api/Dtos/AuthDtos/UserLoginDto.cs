@@ -1,5 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
+﻿
 namespace English.Website.Api.Dtos.AuthDtos
 {
     public class UserDto

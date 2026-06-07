@@ -20,6 +20,7 @@ namespace English.Website.Api.Extensions
             services.AddScoped<AuthService>();
             services.AddScoped<ForgetPasswordService>();
             services.AddScoped<IEmailService, EmailService>();
+            services.AddScoped<IUserContextService, UserContextService>();
 
             // 3. Đăng ký AutoMapper
             services.AddAutoMapper(typeof(MappingProfiles).Assembly);
@@ -40,6 +41,8 @@ namespace English.Website.Api.Extensions
 
             // 👇 ĐĂNG KÝ CẦU NỐI ĐỂ SERVICE CÓ THỂ ĐỌC/GHI COOKIE
             services.AddHttpContextAccessor();
+
+            services.AddHttpClient<IDeepSeekService, DeepSeekService>();
 
         }
     }

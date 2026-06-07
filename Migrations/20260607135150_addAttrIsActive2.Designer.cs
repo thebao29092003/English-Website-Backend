@@ -4,6 +4,7 @@ using English.Website.Domain.DatabaseContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace English.Website.Migrations
 {
     [DbContext(typeof(EnglishDBContext))]
-    partial class EnglishDBContextModelSnapshot : ModelSnapshot
+    [Migration("20260607135150_addAttrIsActive2")]
+    partial class addAttrIsActive2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
