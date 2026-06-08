@@ -1,7 +1,10 @@
-﻿namespace English.Website.Domain.Entities
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace English.Website.Domain.Entities
 {
     public class User 
     {
+        [Key]
         public Guid UserId { get; set; }
         public string Username { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
