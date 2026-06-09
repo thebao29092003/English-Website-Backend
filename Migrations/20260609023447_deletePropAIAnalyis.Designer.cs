@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace English.Website.Migrations
 {
     [DbContext(typeof(EnglishDBContext))]
-    [Migration("20260608172334_deleteRelationship")]
-    partial class deleteRelationship
+    [Migration("20260609023447_deletePropAIAnalyis")]
+    partial class deletePropAIAnalyis
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -61,19 +61,6 @@ namespace English.Website.Migrations
                     b.HasKey("AIModelTextId");
 
                     b.ToTable("AIModelTexts");
-
-                    b.HasData(
-                        new
-                        {
-                            AIModelTextId = 1,
-                            AIName = "DeepSeek V4 Chat (Flash)",
-                            CacheHitPricePerMillion = 0.014m,
-                            CreatedAt = new DateTime(2026, 6, 8, 17, 23, 33, 799, DateTimeKind.Utc).AddTicks(9627),
-                            InputPricePerMillion = 0.14m,
-                            IsActive = true,
-                            OutputPricePerMillion = 0.28m,
-                            Provider = "DeepSeek"
-                        });
                 });
 
             modelBuilder.Entity("English.Website.Domain.Entities.AI.AiAnalysis", b =>
@@ -81,9 +68,6 @@ namespace English.Website.Migrations
                     b.Property<Guid>("AiAnalysisId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("AIModelTextId")
-                        .HasColumnType("int");
 
                     b.Property<string>("AnalysisContentJson")
                         .IsRequired()

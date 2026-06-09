@@ -15,9 +15,6 @@ namespace English.Website.Domain.Entities.AI
         public Guid TokenUsageId { get; set; } // Khóa ngoại quan hệ 1-1 sang bảng TokenUsage
 
         [Required]
-        public int AIModelTextId { get; set; }
-
-        [Required]
         public string UserTranscript { get; set; } = null!; // Lưu vết đoạn text học sinh nói
 
         [Required]

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace English.Website.Migrations
 {
     /// <inheritdoc />
-    public partial class deleteRelationship : Migration
+    public partial class deletePropAIAnalyis : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -84,7 +84,6 @@ namespace English.Website.Migrations
                     AiAnalysisId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     UserId = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     TokenUsageId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    AIModelTextId = table.Column<int>(type: "int", nullable: false),
                     UserTranscript = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     AnalysisContentJson = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
@@ -99,11 +98,6 @@ namespace English.Website.Migrations
                         principalColumn: "TokenUsageId",
                         onDelete: ReferentialAction.Cascade);
                 });
-
-            migrationBuilder.InsertData(
-                table: "AIModelTexts",
-                columns: new[] { "AIModelTextId", "AIName", "CacheHitPricePerMillion", "CreatedAt", "InputPricePerMillion", "IsActive", "OutputPricePerMillion", "Provider" },
-                values: new object[] { 1, "DeepSeek V4 Chat (Flash)", 0.014m, new DateTime(2026, 6, 8, 17, 23, 33, 799, DateTimeKind.Utc).AddTicks(9627), 0.14m, true, 0.28m, "DeepSeek" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_AiAnalyses_TokenUsageId",
