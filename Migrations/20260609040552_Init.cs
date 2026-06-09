@@ -6,13 +6,13 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace English.Website.Migrations
 {
     /// <inheritdoc />
-    public partial class deletePropAIAnalyis : Migration
+    public partial class Init : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "AIModelTexts",
+                name: "AIModelText",
                 columns: table => new
                 {
                     AIModelTextId = table.Column<int>(type: "int", nullable: false)
@@ -27,11 +27,11 @@ namespace English.Website.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_AIModelTexts", x => x.AIModelTextId);
+                    table.PrimaryKey("PK_AIModelText", x => x.AIModelTextId);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Users",
+                name: "User",
                 columns: table => new
                 {
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
@@ -47,11 +47,11 @@ namespace English.Website.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Users", x => x.UserId);
+                    table.PrimaryKey("PK_User", x => x.UserId);
                 });
 
             migrationBuilder.CreateTable(
-                name: "TokenUsages",
+                name: "TokenUsage",
                 columns: table => new
                 {
                     TokenUsageId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
@@ -68,17 +68,17 @@ namespace English.Website.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_TokenUsages", x => x.TokenUsageId);
+                    table.PrimaryKey("PK_TokenUsage", x => x.TokenUsageId);
                     table.ForeignKey(
-                        name: "FK_TokenUsages_AIModelTexts_AIModelTextId",
+                        name: "FK_TokenUsage_AIModelText_AIModelTextId",
                         column: x => x.AIModelTextId,
-                        principalTable: "AIModelTexts",
+                        principalTable: "AIModelText",
                         principalColumn: "AIModelTextId",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "AiAnalyses",
+                name: "AiAnalyse",
                 columns: table => new
                 {
                     AiAnalysisId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
@@ -90,24 +90,24 @@ namespace English.Website.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_AiAnalyses", x => x.AiAnalysisId);
+                    table.PrimaryKey("PK_AiAnalyse", x => x.AiAnalysisId);
                     table.ForeignKey(
-                        name: "FK_AiAnalyses_TokenUsages_TokenUsageId",
+                        name: "FK_AiAnalyse_TokenUsage_TokenUsageId",
                         column: x => x.TokenUsageId,
-                        principalTable: "TokenUsages",
+                        principalTable: "TokenUsage",
                         principalColumn: "TokenUsageId",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_AiAnalyses_TokenUsageId",
-                table: "AiAnalyses",
+                name: "IX_AiAnalyse_TokenUsageId",
+                table: "AiAnalyse",
                 column: "TokenUsageId",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_TokenUsages_AIModelTextId",
-                table: "TokenUsages",
+                name: "IX_TokenUsage_AIModelTextId",
+                table: "TokenUsage",
                 column: "AIModelTextId");
         }
 
@@ -115,16 +115,16 @@ namespace English.Website.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "AiAnalyses");
+                name: "AiAnalyse");
 
             migrationBuilder.DropTable(
-                name: "Users");
+                name: "User");
 
             migrationBuilder.DropTable(
-                name: "TokenUsages");
+                name: "TokenUsage");
 
             migrationBuilder.DropTable(
-                name: "AIModelTexts");
+                name: "AIModelText");
         }
     }
 }

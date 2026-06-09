@@ -23,7 +23,8 @@ namespace English.Website.Api.Extensions
             services.AddScoped<IUserContextService, UserContextService>();
 
             // 3. Đăng ký AutoMapper
-            services.AddAutoMapper(typeof(MappingProfiles).Assembly);
+            // cfg => { } để viết riêng map thôi mình có file riêng rồi nên không cần
+            services.AddAutoMapper(cfg => { },typeof(MappingProfiles));
 
             // 4. Đăng ký MEMORY CACHE (RAM) CỦA .NET
             services.AddMemoryCache();

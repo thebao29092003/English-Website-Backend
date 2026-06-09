@@ -4,6 +4,6 @@ namespace English.Website.Application.Services.IServices
 {
     public interface IDeepSeekService
     {
-        Task<DeepSeekResponseDto?> AnalyzeSpeech(TranscriptRequestDto transcriptRequest);
+        Task<string> AnalyzeSpeech(TranscriptRequestDto transcriptRequest);
     }
 }

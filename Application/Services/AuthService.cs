@@ -5,6 +5,7 @@ using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services.IServices;
 using English.Website.Domain.DatabaseContext;
 using English.Website.Domain.Entities;
+using English.Website.Domain.Entities.AI;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -90,7 +91,8 @@ namespace English.Website.Application.Services
 
         private async Task<User> ValidateRefreshToken(string refreshToken)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.RefreshToken == refreshToken);
+
+            var user = await _context.User.FirstOrDefaultAsync(u => u.RefreshToken == refreshToken);
             if (user == null ||
                 user.RefreshTokenExpiryTime <= DateTime.UtcNow
             )
@@ -123,7 +125,7 @@ namespace English.Website.Application.Services
 
         public async Task SendRegisterOtp(string toEmail)
         {
-            var isExistingUser = await _context.Users.AnyAsync(u => u.Username == toEmail);
+            var isExistingUser = await _context.User.AnyAsync(u => u.Username == toEmail);
             if (isExistingUser)
             {
                 throw new BadRequestException("Account already exists.");
@@ -164,7 +166,7 @@ namespace English.Website.Application.Services
             }
 
             // 2. Kiểm tra lại trùng lặp email đề phòng race condition
-            var isExistingUser = await _context.Users.AnyAsync(u => u.Username == registerDto.Username);
+            var isExistingUser = await _context.User.AnyAsync(u => u.Username == registerDto.Username);
             if (isExistingUser)
             {
                 throw new BadRequestException("Account already exists.");
@@ -182,7 +184,7 @@ namespace English.Website.Application.Services
             userNew.CreatedAt = DateTime.UtcNow;
             userNew.LastLoginAt = null; // Tài khoản mới tinh chưa đăng nhập lần nào
 
-            _context.Users.Add(userNew);
+            _context.User.Add(userNew);
             await _context.SaveChangesAsync();
 
             // 4. Xóa mã OTP khỏi RAM sau khi đăng ký thành công
@@ -192,7 +194,7 @@ namespace English.Website.Application.Services
         public async Task<TokenResponseDto> Login(UserDto userDto)
         {
             // đối với login không nên trả lỗi cụ thể dể tránh lộ thông tin về tài khoản, nên trả về lỗi chung chung như "Invalid username or password"
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == userDto.Username);
+            var user = await _context.User.FirstOrDefaultAsync(u => u.Username == userDto.Username);
             if (user == null)
             {
                 throw new BadRequestException("Invalid username or password");
@@ -239,7 +241,7 @@ namespace English.Website.Application.Services
         public async Task<bool> Logout(string userId)
         {
 
-            var user = await _context.Users.FindAsync(Guid.Parse(userId))
+            var user = await _context.User.FindAsync(Guid.Parse(userId))
                 ?? throw new BadRequestException("User not found");
 
             // 1. Thay đổi SecurityStamp trong DB -> Toàn bộ Access Token cũ sẽ bị vô hiệu hóa

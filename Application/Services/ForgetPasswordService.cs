@@ -27,7 +27,7 @@ namespace English.Website.Application.Services
         {
             // 1. Kiểm tra xem Email này có tồn tại trong hệ thống chưa
             var user = 
-                await _context.Users.FirstOrDefaultAsync(u => u.Username == email) 
+                await _context.User.FirstOrDefaultAsync(u => u.Username == email) 
                 ?? throw new BadRequestException("Email not exist.");
 
             // 2. Sinh mã OTP 6 số
@@ -57,7 +57,7 @@ namespace English.Website.Application.Services
 
             // 2. Tìm người dùng
             var user = 
-                await _context.Users.FirstOrDefaultAsync(u => u.Username == dto.Email) 
+                await _context.User.FirstOrDefaultAsync(u => u.Username == dto.Email) 
                 ?? throw new BadRequestException("User not exist.");
             
             // 3. Đặt mật khẩu mới

@@ -69,7 +69,7 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 {
                     // 2. CACHE MISS: Nếu RAM chưa lưu, truy vấn database để lấy Stamp mới nhất
                     var userId = Guid.Parse(userIdClaim);
-                    var user = await dbContext.Users
+                    var user = await dbContext.User
                         .AsNoTracking() // Tối ưu truy vấn nhanh không cần tracking
                         .FirstOrDefaultAsync(u => u.UserId == userId);
 

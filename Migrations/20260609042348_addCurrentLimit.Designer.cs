@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace English.Website.Migrations
 {
     [DbContext(typeof(EnglishDBContext))]
-    [Migration("20260609023447_deletePropAIAnalyis")]
-    partial class deletePropAIAnalyis
+    [Migration("20260609042348_addCurrentLimit")]
+    partial class addCurrentLimit
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -41,6 +41,9 @@ namespace English.Website.Migrations
                     b.Property<decimal?>("CacheHitPricePerMillion")
                         .HasColumnType("decimal(18, 6)");
 
+                    b.Property<int>("ConcurrencyLimit")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -60,7 +63,7 @@ namespace English.Website.Migrations
 
                     b.HasKey("AIModelTextId");
 
-                    b.ToTable("AIModelTexts");
+                    b.ToTable("AIModelText");
                 });
 
             modelBuilder.Entity("English.Website.Domain.Entities.AI.AiAnalysis", b =>
@@ -92,7 +95,7 @@ namespace English.Website.Migrations
                     b.HasIndex("TokenUsageId")
                         .IsUnique();
 
-                    b.ToTable("AiAnalyses");
+                    b.ToTable("AiAnalyse");
                 });
 
             modelBuilder.Entity("English.Website.Domain.Entities.AI.TokenUsage", b =>
@@ -135,7 +138,7 @@ namespace English.Website.Migrations
 
                     b.HasIndex("AIModelTextId");
 
-                    b.ToTable("TokenUsages");
+                    b.ToTable("TokenUsage");
                 });
 
             modelBuilder.Entity("English.Website.Domain.Entities.User", b =>
@@ -177,7 +180,7 @@ namespace English.Website.Migrations
 
                     b.HasKey("UserId");
 
-                    b.ToTable("Users");
+                    b.ToTable("User");
                 });
 
             modelBuilder.Entity("English.Website.Domain.Entities.AI.AiAnalysis", b =>
@@ -193,13 +196,13 @@ namespace English.Website.Migrations
 
             modelBuilder.Entity("English.Website.Domain.Entities.AI.TokenUsage", b =>
                 {
-                    b.HasOne("English.Website.Domain.Entities.AI.AIModelText", "AiModel")
+                    b.HasOne("English.Website.Domain.Entities.AI.AIModelText", "AIModel")
                         .WithMany("TokenUsages")
                         .HasForeignKey("AIModelTextId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("AiModel");
+                    b.Navigation("AIModel");
                 });
 
             modelBuilder.Entity("English.Website.Domain.Entities.AI.AIModelText", b =>

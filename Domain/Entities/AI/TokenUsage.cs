@@ -60,7 +60,7 @@ namespace English.Website.Domain.Entities.AI
         /// tên của thuộc tính Khóa ngoại nằm ngay trong CÙNG bảng đó 
         /// </summary>
         [ForeignKey(nameof(AIModelTextId))]
-        public AIModelText AiModel { get; set; } = null!;
+        public AIModelText AIModel { get; set; } = null!;
 
         /// <summary>
         /// Quan hệ 1 - 1 với kết quả phân tích bài học

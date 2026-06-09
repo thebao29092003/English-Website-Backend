@@ -9,7 +9,7 @@ namespace English.Website.Domain.Entities.AI
         public Guid AiAnalysisId { get; set; } = Guid.NewGuid();
 
         [Required]
-        public string UserId { get; set; } = null!;
+        public Guid UserId { get; set; }
 
         [Required]
         public Guid TokenUsageId { get; set; } // Khóa ngoại quan hệ 1-1 sang bảng TokenUsage
@@ -18,7 +18,7 @@ namespace English.Website.Domain.Entities.AI
         public string UserTranscript { get; set; } = null!; // Lưu vết đoạn text học sinh nói
 
         [Required]
-        public string AnalysisContentJson { get; set; } = null!; // Lưu chuỗi JSON phân tích (sạch, không có \)
+        public string AnalysisContentJson { get; set; } = null!; 
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

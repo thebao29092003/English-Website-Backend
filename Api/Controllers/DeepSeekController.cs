@@ -1,6 +1,4 @@
 ﻿using English.Website.Api.Dtos.AIDtos;
-using English.Website.Api.Extensions.Helpers;
-using English.Website.Application.Services;
 using English.Website.Application.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,14 +24,14 @@ namespace English.Website.Api.Controllers
         public async Task<IActionResult> RequestAI([FromBody] TranscriptRequestDto transcriptRequest)
         {
             var result = await _deepSeekService.AnalyzeSpeech(transcriptRequest);
-            //var jsonParse = JsonNode.Parse(result);
+            var jsonParse = JsonNode.Parse(result);
             return Ok(new APIResponseBase
             {
                 isResponseResult = false,
                 success = true,
                 endPointCode = "deepseek.chat",
                 status = (int)HttpStatusCode.OK,
-                value = result,
+                value = jsonParse,
                 message = "DeepSeek response successfully"
             });
         }

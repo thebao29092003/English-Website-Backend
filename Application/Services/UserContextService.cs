@@ -26,7 +26,7 @@ namespace English.Website.Application.Services
         public async Task<UserContextDtos> GetUserDetail()
         {
             string userId = _httpContextAccessor.HttpContext?.User?.FindFirstValue("UserId")!;
-            var userDetail = await _dbContext.Users
+            var userDetail = await _dbContext.User
                 //.Include(u => u.Subscription)
                 .Where(u => u.UserId.ToString() == userId)
                 .Select(u => new UserContextDtos

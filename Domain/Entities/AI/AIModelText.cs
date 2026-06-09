@@ -35,6 +35,8 @@ namespace English.Website.Domain.Entities.AI
         [Column(TypeName = "decimal(18, 6)")]
         public decimal? CacheHitPricePerMillion { get; set; }
 
+        public int ConcurrencyLimit { get; set; }
+
         /// <summary>
         /// khi lấy ra chỉ lấy model nào được active
         /// </summary>
