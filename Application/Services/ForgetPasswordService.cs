@@ -30,6 +30,11 @@ namespace English.Website.Application.Services
                 await _context.User.FirstOrDefaultAsync(u => u.Username == email) 
                 ?? throw new BadRequestException("Email not exist.");
 
+            if(!user.IsActive)
+            {
+                throw new BadRequestException("Account is blocked. Plase contact admin via email");
+            }
+
             // 2. Sinh mã OTP 6 số
             var otp = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
 

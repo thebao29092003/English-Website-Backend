@@ -39,7 +39,7 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
             // THÊM DÒNG NÀY ĐỂ ĐỊNH NGHĨA LẠI KEY PHÂN QUYỀN TRONG JWT
             // còn nếu không thêm bắt buộc phải dùng ClaimTypes.Role để phân quyền thì mới có thể dùng [Authorize(Roles = "Admin")]
-            RoleClaimType = "Role" 
+            RoleClaimType = "Role"
         };
 
         options.Events = new JwtBearerEvents
@@ -57,15 +57,36 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
                 if (string.IsNullOrEmpty(userIdClaim) || string.IsNullOrEmpty(tokenStamp))
                 {
-                    context.Fail("Token không hợp lệ (Thiếu thông tin nhận diện).");
+                    context.Fail("Invalid Token");
                     return;
                 }
 
-                string cacheKey = $"security-stamp:{userIdClaim}";
+                string cacheKeyIsAcitve = $"user-active:{userIdClaim}";
+                string cacheKeySecurityStamp = $"security-stamp:{userIdClaim}";
+
+                var cacheEntryOptions = new MemoryCacheEntryOptions()
+                    .SetAbsoluteExpiration(TimeSpan.FromMinutes(8)) // Hết hạn tuyệt đối sau 5 phút
+                    .SetSlidingExpiration(TimeSpan.FromMinutes(3)); // Nếu user không hoạt động trong 2 phút thì xóa
+
+                if (!memoryCache.TryGetValue(cacheKeyIsAcitve, out bool isActive))
+                {
+                    // 3. Nếu RAM chưa lưu (Cache Miss), ta mới truy vấn Database
+                    isActive = await dbContext.User
+                        .Where(u => u.UserId.ToString() == userIdClaim)
+                        .Select(u => u.IsActive)
+                        .FirstOrDefaultAsync();
+
+                    memoryCache.Set(cacheKeyIsAcitve, isActive, cacheEntryOptions);
+                }
+
+                if (!isActive)
+                {
+                    context.Fail("Account is blocked.");
+                }
 
                 // Vì mỗi request đều phải kiểm tra bước này, nếu request nào cũng gọi Database (DB) thì server sẽ rất chậm.
                 // Do đó, code sẽ ưu tiên kiểm tra trong RAM (MemoryCache) trước
-                if (!memoryCache.TryGetValue(cacheKey, out string? validStamp))
+                if (!memoryCache.TryGetValue(cacheKeySecurityStamp, out string? validStamp))
                 {
                     // 2. CACHE MISS: Nếu RAM chưa lưu, truy vấn database để lấy Stamp mới nhất
                     var userId = Guid.Parse(userIdClaim);
@@ -75,20 +96,19 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
                     if (user == null)
                     {
-                        context.Fail("Người dùng không tồn tại.");
+                        context.Fail("User Notfound");
                         return;
                     }
 
                     validStamp = user.SecurityStamp;
 
-                    // 3. LƯU VÀO RAM TRONG 10 PHÚT: Để các request sau không phải gọi DB nữa
-                    memoryCache.Set(cacheKey, validStamp, TimeSpan.FromMinutes(10));
+                    memoryCache.Set(cacheKeySecurityStamp, validStamp, cacheEntryOptions);
                 }
 
                 // 4.SO SÁNH: Nếu Stamp trong Token lệch với Stamp hợp lệ->Chặn đứng ngay
                 if (tokenStamp != validStamp)
                 {
-                    context.Fail("Phiên đăng nhập đã bị vô hiệu hóa (Người dùng đã đăng xuất hoặc đổi mật khẩu).");
+                    context.Fail("User Logout Or Change Password");
                 }
             }
         };

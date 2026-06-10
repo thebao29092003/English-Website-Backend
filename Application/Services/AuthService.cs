@@ -6,6 +6,7 @@ using English.Website.Application.Services.IServices;
 using English.Website.Domain.DatabaseContext;
 using English.Website.Domain.Entities;
 using English.Website.Domain.Entities.AI;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -28,13 +29,15 @@ namespace English.Website.Application.Services
         private readonly IMemoryCache _memoryCache;
         private readonly IEmailService _emailService;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IUserContextService _useContext;
 
         public AuthService(
             EnglishDBContext context,
             IConfiguration configuration,
             IMemoryCache memoryCache,
             IEmailService emailService,
-            IHttpContextAccessor httpContextAccessor
+            IHttpContextAccessor httpContextAccessor,
+            IUserContextService useContext
 
         )
         {
@@ -43,6 +46,7 @@ namespace English.Website.Application.Services
             _memoryCache = memoryCache;
             _emailService = emailService;
             _httpContextAccessor = httpContextAccessor;
+            _useContext = useContext;
         }
 
         private void SetRefreshTokenInCookie(string refreshToken)
@@ -206,6 +210,11 @@ namespace English.Website.Application.Services
                 throw new BadRequestException("Invalid username or password");
             }
 
+            if (!user.IsActive)
+            {
+                throw new BadRequestException("Account is blocked. Plase contact admin via email");
+            }
+
             user.LastLoginAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
@@ -231,6 +240,12 @@ namespace English.Website.Application.Services
             }
 
             var user = await ValidateRefreshToken(refreshToken);
+
+            if(!user.IsActive)
+            {
+                throw new BadRequestException("Account is blocked. Plase contact admin via email");
+            }
+
             var response = await CreateTokenResponse(user);
 
             SetRefreshTokenInCookie(response.RefreshToken);
@@ -238,9 +253,13 @@ namespace English.Website.Application.Services
             return response;
         }
 
-        public async Task<bool> Logout(string userId)
+        public async Task Logout()
         {
 
+            var userFromToken = await _useContext.GetUserDetail();
+            var userId = userFromToken.UserId.ToString();
+
+            // FindAsync bắt buộc trùng kiểu dữ liệu với khóa chính
             var user = await _context.User.FindAsync(Guid.Parse(userId))
                 ?? throw new BadRequestException("User not found");
 
@@ -253,7 +272,20 @@ namespace English.Website.Application.Services
             string cacheKey = $"security-stamp:{userId}";
             _memoryCache.Remove(cacheKey);
             await _context.SaveChangesAsync();
-            return true;
+        }
+
+        public async Task UpdateUserStatusAsync(string userId)
+        {
+            var user = await _context.User.FindAsync(Guid.Parse(userId));
+            if (user == null) throw new BadRequestException("User not found");
+
+            user.IsActive = !user.IsActive;
+            await _context.SaveChangesAsync();
+
+            // 👇 BƯỚC QUAN TRỌNG: XOÁ CACHE ĐỂ ĐỒNG BỘ TRẠNG THÁI KHÓA NGAY LẬP TỨC
+            // Khi xóa key này, request tiếp theo của user đó gửi lên sẽ bị ép truy vấn DB và bị chặn lại.
+            string cacheKey = $"user-active:{userId}";
+            _memoryCache.Remove(cacheKey);
         }
     }
 }

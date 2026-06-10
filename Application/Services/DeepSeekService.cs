@@ -17,21 +17,18 @@ namespace English.Website.Application.Services
         private readonly string _apiKey;
         private readonly IUserContextService _userContextService;
         private readonly EnglishDBContext _englishDBContext;
-        private readonly IMapper _mapper;
 
         public DeepSeekService(
             IConfiguration configuration,
             HttpClient httpClient,
             IUserContextService userContextService,
-            EnglishDBContext englishDBContext,
-            IMapper mapper
+            EnglishDBContext englishDBContext
         )
         {
             _httpClient = httpClient;
             _apiKey = configuration["AI:DeepSeekApiKey"]!;
             _userContextService = userContextService;
             _englishDBContext = englishDBContext;
-            _mapper = mapper;
         }
 
         public async Task<string> AnalyzeSpeech(TranscriptRequestDto deepSeekRequest)
@@ -40,19 +37,17 @@ namespace English.Website.Application.Services
             var user = await _userContextService.GetUserDetail();
             var userId = user?.UserId;
 
-            if(userId == null)
+            if (userId == null)
             {
                 throw new BadRequestException("UserId not found");
             }
 
             string systemPrompt = deepSeekRequest.type switch
             {
-                "FULL" => SystemPrompt.systemPromptFull, 
+                "FULL" => SystemPrompt.systemPromptFull,
                 "QUICK" => SystemPrompt.systemPrompt,
                 _ => throw new BadRequestException("Invalid type. Must be either 'FULL' or 'QUICK'")
             };
-
-
 
             var requestBody = new DeepSeekRequestDto
             {
@@ -65,15 +60,17 @@ namespace English.Website.Application.Services
                 ResponseFormat = new DeepSeekResponseFormat { Type = "json_object" },
                 Temperature = 0.2,
 
-                UserId =  userId,
-                
+                UserId = userId,
+
                 Thinking = new DeepSeekThingKingMode { Type = "disble" },
 
                 MaxTokens = 2048
             };
 
+            // chuyển từ object sang string (string này có format nghiêm ngặt dạng json)
             var jsonPayload = JsonSerializer.Serialize(requestBody);
 
+            // http request sử dụng using để giải phóng tài nguyên
             using var request = new HttpRequestMessage(HttpMethod.Post, requestUrl);
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
             request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
@@ -99,14 +96,14 @@ namespace English.Website.Application.Services
 
             try
             {
-                TokenUsage tokenUsage = new TokenUsage {
+                TokenUsage tokenUsage = new TokenUsage
+                {
 
                     AIModelTextId = 1,
                     UserId = (Guid)userId,
 
                     TotalTokens = usage?.TotalTokens ?? 0,
                     PromptTokens = usage?.PromptTokens ?? 0,
-
 
                     CacheMissTokens = usage?.PromptCacheMissTokens,
                     CacheHitTokens = usage?.PromptCacheHitTokens,
@@ -115,18 +112,18 @@ namespace English.Website.Application.Services
 
                     ReasoningTokens = usage?.CompletionTokensDetails == null ? 0 : usage?.CompletionTokensDetails.ReasoningTokens ?? 0,
 
-                    CalculatedCost = 
-                       ( (decimal)0.14 * (usage?.PromptCacheMissTokens ?? 0) +
+                    CalculatedCost =
+                       ((decimal)0.14 * (usage?.PromptCacheMissTokens ?? 0) +
                         (decimal)0.0028 * (usage?.PromptCacheHitTokens ?? 0) +
-                        (decimal)0.28 * (usage?.CompletionTokens ?? 0) ) / 1000000
+                        (decimal)0.28 * (usage?.CompletionTokens ?? 0)) / 1000000
                 };
-                
+
 
                 _englishDBContext.TokenUsage.Add(tokenUsage);
 
                 AiAnalysis aiAnalysis = new()
                 {
-                    UserId = (Guid) userId,
+                    UserId = (Guid)userId,
                     TokenUsage = tokenUsage,
                     UserTranscript = deepSeekRequest.userPrompt,
                     AnalysisContentJson = messageContent ?? "Ai not response"

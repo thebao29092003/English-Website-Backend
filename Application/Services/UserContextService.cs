@@ -3,7 +3,6 @@ using English.Website.Api.Dtos.UserDtos;
 using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services.IServices;
 using English.Website.Domain.DatabaseContext;
-using English.Website.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
@@ -20,15 +19,23 @@ namespace English.Website.Application.Services
             _dbContext = dBContext;
         }
 
-        // Đọc trường 'sub' hoặc 'NameIdentifier' trong JWT làm UserId
-
-
         public async Task<UserContextDtos> GetUserDetail()
         {
+            /*
+             Cách hoạt động: IHttpContextAccessor giúp bạn tiếp cận phiên làm việc HTTP hiện tại. Hệ thống sẽ đi vào User (đối tượng đại diện cho người dùng đã đăng nhập thành công qua JWT).
+             Hàm FindFirstValue("UserId") tìm kiếm trong Token xem có claim (thông tin đi kèm) nào tên là "UserId" không và lấy ra giá trị dạng chuỗi (string) của nó.
+             */
             string userId = _httpContextAccessor.HttpContext?.User?.FindFirstValue("UserId")!;
+
+            // Nếu ID là kiểu Guid
+            if (!Guid.TryParse(userId, out Guid userGuid))
+            {
+                throw new BadRequestException("Invalid UserId format");
+            }
+
             var userDetail = await _dbContext.User
                 //.Include(u => u.Subscription)
-                .Where(u => u.UserId.ToString() == userId)
+                .Where(u => u.UserId == userGuid)
                 .Select(u => new UserContextDtos
                 {
                     UserId = u.UserId,

@@ -84,16 +84,15 @@ namespace English.Website.Api.Controllers
         [Authorize]
         public async Task<IActionResult> Logout()
         {
-            var userId = User.FindFirst("UserId")!.Value;
-            var result = await _authService.Logout(userId);
+            await _authService.Logout();
 
             return Ok(new APIResponseBase
             {
-                isResponseResult = true,
+                isResponseResult = false,
                 success = true,
                 endPointCode = "auth.logout",
                 status = (int)HttpStatusCode.OK,
-                value = result,
+                value = null,
                 message = "Logout successful."
             });
         }
@@ -104,7 +103,7 @@ namespace English.Website.Api.Controllers
         {
             return Ok(new APIResponseBase
             {
-                isResponseResult = true,
+                isResponseResult = false,
                 success = true,
                 endPointCode = "auth.allApiGet",
                 status = (int)HttpStatusCode.OK,
@@ -115,16 +114,17 @@ namespace English.Website.Api.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpGet("admin")]
-        public IActionResult AdminRoute()
+        public async Task<IActionResult> UpdateUserIsActive([FromQuery] string userId)
         {
+            await _authService.UpdateUserStatusAsync(userId);
             return Ok(new APIResponseBase
             {
-                isResponseResult = true,
+                isResponseResult = false,
                 success = true,
                 endPointCode = "auth.AdminRoute",
                 status = (int)HttpStatusCode.OK,
                 value = null,
-                message = "You are an admin."
+                message = "Update status is active successfully"
             });
         }
     }
