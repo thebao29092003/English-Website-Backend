@@ -1,4 +1,5 @@
 ﻿using English.Website.Api.Extensions;
+using English.Website.Api.Extensions.Helpers;
 using English.Website.Domain.DatabaseContext;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -57,16 +58,15 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
                 if (string.IsNullOrEmpty(userIdClaim) || string.IsNullOrEmpty(tokenStamp))
                 {
-                    context.Fail("Invalid Token");
-                    return;
+                    throw new BadRequestException("Invalid token");
                 }
 
-                string cacheKeyIsAcitve = $"user-active:{userIdClaim}";
-                string cacheKeySecurityStamp = $"security-stamp:{userIdClaim}";
+                string cacheKeyIsAcitve = $"user-active:{userIdClaim.ToString().ToLowerInvariant()}";
+                string cacheKeySecurityStamp = $"security-stamp:{userIdClaim.ToString().ToLowerInvariant()}";
 
                 var cacheEntryOptions = new MemoryCacheEntryOptions()
-                    .SetAbsoluteExpiration(TimeSpan.FromMinutes(8)) // Hết hạn tuyệt đối sau 5 phút
-                    .SetSlidingExpiration(TimeSpan.FromMinutes(3)); // Nếu user không hoạt động trong 2 phút thì xóa
+                    .SetAbsoluteExpiration(TimeSpan.FromMinutes(8)) // Hết hạn tuyệt đối sau 8 phút
+                    .SetSlidingExpiration(TimeSpan.FromMinutes(3)); // Nếu user không hoạt động trong 3 phút thì xóa
 
                 if (!memoryCache.TryGetValue(cacheKeyIsAcitve, out bool isActive))
                 {
@@ -81,7 +81,7 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
                 if (!isActive)
                 {
-                    context.Fail("Account is blocked.");
+                    throw new BadRequestException("Account is blocked. Plase contact admin via email");
                 }
 
                 // Vì mỗi request đều phải kiểm tra bước này, nếu request nào cũng gọi Database (DB) thì server sẽ rất chậm.
@@ -96,8 +96,7 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
                     if (user == null)
                     {
-                        context.Fail("User Notfound");
-                        return;
+                        throw new BadRequestException("User not found");
                     }
 
                     validStamp = user.SecurityStamp;
@@ -108,7 +107,7 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 // 4.SO SÁNH: Nếu Stamp trong Token lệch với Stamp hợp lệ->Chặn đứng ngay
                 if (tokenStamp != validStamp)
                 {
-                    context.Fail("User Logout Or Change Password");
+                    throw new BadRequestException("Invalid stamp");
                 }
             }
         };

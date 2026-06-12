@@ -51,7 +51,7 @@ namespace English.Website.Application.Services
 
             var requestBody = new DeepSeekRequestDto
             {
-                Model = "deepseek-chat",
+                Model = "deepseek-v4-flash",
                 Messages = new List<DeepSeekMessage>
                     {
                         new DeepSeekMessage { Role = "system", Content = systemPrompt },

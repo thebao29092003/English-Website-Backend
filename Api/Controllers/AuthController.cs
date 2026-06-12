@@ -112,8 +112,8 @@ namespace English.Website.Api.Controllers
             });
         }
 
-        [Authorize(Roles = "Admin")]
-        [HttpGet("admin")]
+        [HttpPut("change-is-active")]
+        [Authorize(Roles = "ADMIN")]
         public async Task<IActionResult> UpdateUserIsActive([FromQuery] string userId)
         {
             await _authService.UpdateUserStatusAsync(userId);
@@ -121,7 +121,7 @@ namespace English.Website.Api.Controllers
             {
                 isResponseResult = false,
                 success = true,
-                endPointCode = "auth.AdminRoute",
+                endPointCode = "auth.changeIsActive",
                 status = (int)HttpStatusCode.OK,
                 value = null,
                 message = "Update status is active successfully"
@@ -129,3 +129,4 @@ namespace English.Website.Api.Controllers
         }
     }
 }
+

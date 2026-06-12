@@ -86,7 +86,7 @@ namespace English.Website.Application.Services
                 issuer: _configuration.GetValue<string>("AppSettings:Issuer"),
                 audience: _configuration.GetValue<string>("AppSettings:Audience"),
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(20),
+                expires: DateTime.UtcNow.AddMinutes(15),
                 signingCredentials: creds
             );
 
@@ -269,7 +269,7 @@ namespace English.Website.Application.Services
             user.RefreshToken = null;
             user.RefreshTokenExpiryTime = null;
 
-            string cacheKey = $"security-stamp:{userId}";
+            string cacheKey = $"security-stamp:{userId.ToString().ToLowerInvariant()}";
             _memoryCache.Remove(cacheKey);
             await _context.SaveChangesAsync();
         }
@@ -284,8 +284,8 @@ namespace English.Website.Application.Services
 
             // 👇 BƯỚC QUAN TRỌNG: XOÁ CACHE ĐỂ ĐỒNG BỘ TRẠNG THÁI KHÓA NGAY LẬP TỨC
             // Khi xóa key này, request tiếp theo của user đó gửi lên sẽ bị ép truy vấn DB và bị chặn lại.
-            string cacheKey = $"user-active:{userId}";
-            _memoryCache.Remove(cacheKey);
+            string cacheKey = $"user-active:{userId.ToString().ToLowerInvariant()}";
+             _memoryCache.Remove(cacheKey);
         }
     }
 }
