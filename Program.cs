@@ -1,4 +1,5 @@
 ﻿using English.Website.Api.Extensions;
+using English.Website.Api.Extensions.Helpers;
 using English.Website.Domain.DatabaseContext;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -39,11 +40,12 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
             // THÊM DÒNG NÀY ĐỂ ĐỊNH NGHĨA LẠI KEY PHÂN QUYỀN TRONG JWT
             // còn nếu không thêm bắt buộc phải dùng ClaimTypes.Role để phân quyền thì mới có thể dùng [Authorize(Roles = "Admin")]
-            RoleClaimType = "Role" 
+            RoleClaimType = "Role"
         };
 
         options.Events = new JwtBearerEvents
         {
+            // Sự kiện OnTokenValidated chạy ngay sau khi token đã vượt qua các bước kiểm tra cơ bản ở trên
             OnTokenValidated = async context =>
             {
                 // Lấy các dịch vụ cần thiết từ DI Container của HTTP Context
@@ -56,45 +58,65 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
                 if (string.IsNullOrEmpty(userIdClaim) || string.IsNullOrEmpty(tokenStamp))
                 {
-                    context.Fail("Token không hợp lệ (Thiếu thông tin nhận diện).");
-                    return;
+                    throw new BadRequestException("Invalid token");
                 }
 
-                string cacheKey = $"security-stamp:{userIdClaim}";
+                string cacheKeyIsAcitve = $"user-active:{userIdClaim.ToString().ToLowerInvariant()}";
+                string cacheKeySecurityStamp = $"security-stamp:{userIdClaim.ToString().ToLowerInvariant()}";
 
-                if (!memoryCache.TryGetValue(cacheKey, out string? validStamp))
+                var cacheEntryOptions = new MemoryCacheEntryOptions()
+                    .SetAbsoluteExpiration(TimeSpan.FromMinutes(8)) // Hết hạn tuyệt đối sau 8 phút
+                    .SetSlidingExpiration(TimeSpan.FromMinutes(3)); // Nếu user không hoạt động trong 3 phút thì xóa
+
+                if (!memoryCache.TryGetValue(cacheKeyIsAcitve, out bool isActive))
+                {
+                    // 3. Nếu RAM chưa lưu (Cache Miss), ta mới truy vấn Database
+                    isActive = await dbContext.User
+                        .Where(u => u.UserId.ToString() == userIdClaim)
+                        .Select(u => u.IsActive)
+                        .FirstOrDefaultAsync();
+
+                    memoryCache.Set(cacheKeyIsAcitve, isActive, cacheEntryOptions);
+                }
+
+                if (!isActive)
+                {
+                    throw new BadRequestException("Account is blocked. Plase contact admin via email");
+                }
+
+                // Vì mỗi request đều phải kiểm tra bước này, nếu request nào cũng gọi Database (DB) thì server sẽ rất chậm.
+                // Do đó, code sẽ ưu tiên kiểm tra trong RAM (MemoryCache) trước
+                if (!memoryCache.TryGetValue(cacheKeySecurityStamp, out string? validStamp))
                 {
                     // 2. CACHE MISS: Nếu RAM chưa lưu, truy vấn database để lấy Stamp mới nhất
                     var userId = Guid.Parse(userIdClaim);
-                    var user = await dbContext.Users
+                    var user = await dbContext.User
                         .AsNoTracking() // Tối ưu truy vấn nhanh không cần tracking
                         .FirstOrDefaultAsync(u => u.UserId == userId);
 
                     if (user == null)
                     {
-                        context.Fail("Người dùng không tồn tại.");
-                        return;
+                        throw new BadRequestException("User not found");
                     }
 
                     validStamp = user.SecurityStamp;
 
-                    // 3. LƯU VÀO RAM TRONG 10 PHÚT: Để các request sau không phải gọi DB nữa
-                    var cacheEntryOptions = new MemoryCacheEntryOptions()
-                        .SetAbsoluteExpiration(TimeSpan.FromMinutes(10));
-
-                    memoryCache.Set(cacheKey, validStamp, cacheEntryOptions);
+                    memoryCache.Set(cacheKeySecurityStamp, validStamp, cacheEntryOptions);
                 }
 
                 // 4.SO SÁNH: Nếu Stamp trong Token lệch với Stamp hợp lệ->Chặn đứng ngay
                 if (tokenStamp != validStamp)
                 {
-                    context.Fail("Phiên đăng nhập đã bị vô hiệu hóa (Người dùng đã đăng xuất hoặc đổi mật khẩu).");
+                    throw new BadRequestException("Invalid stamp");
                 }
             }
         };
     });
 
 var app = builder.Build();
+
+// 👇 KÍCH HOẠT MIDDLEWARE BẮT LỖI TOÀN CỤC (Phải đặt ở dòng đầu tiên của Pipeline)
+app.UseExceptionHandler();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

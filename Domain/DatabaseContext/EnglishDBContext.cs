@@ -1,4 +1,5 @@
 ﻿using English.Website.Domain.Entities;
+using English.Website.Domain.Entities.AI;
 using Microsoft.EntityFrameworkCore;
 
 namespace English.Website.Domain.DatabaseContext
@@ -7,8 +8,30 @@ namespace English.Website.Domain.DatabaseContext
     {
         public EnglishDBContext(DbContextOptions<EnglishDBContext> options) : base(options)
         {
-         
+
         }
-        public DbSet<User> Users { get; set; }
+        public DbSet<User> User { get; set; }
+        public DbSet<AIModelText> AIModelText { get; set; }
+        public DbSet<TokenUsage> TokenUsage { get; set; }
+        public DbSet<AiAnalysis> AiAnalyse { get; set; }
+
+        /// <summary>
+        /// VỚI QUAN HỆ 1-1 THÌ PHẢI CẤU HÌNH ĐỂ EF CORE BIẾT ĐẶT KHÓA NGOẠI Ở BẢNG NÀO
+        /// </summary>
+        /// <param name="modelBuilder"></param>
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<AiAnalysis>()
+                .HasOne(a => a.TokenUsage)
+                .WithOne(t => t.AiAnalysis)
+                .HasForeignKey<AiAnalysis>(a => a.TokenUsageId); // Chỉ định khóa ngoại nằm ở bảng AiAnalysis
+
+            modelBuilder.Entity<TokenUsage>()
+               .HasOne(t => t.AIModel)
+               .WithMany(m => m.TokenUsages)
+               .HasForeignKey(t => t.AIModelTextId);
+        }
     }
 }

@@ -9,7 +9,6 @@
 
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="16.1.1" />
-    <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.27" />
     <PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.3.10" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.27" />
@@ -31,11 +30,10 @@
 
   <ItemGroup>
     <Folder Include="Api\CacheService\" />
-    <Folder Include="Application\Extend\" />
+    <Folder Include="Api\Extensions\AIOutputText\" />
     <Folder Include="Application\Dtos\" />
     <Folder Include="Domain\Constants\" />
     <Folder Include="Domain\Cores\BaseModel\" />
-    <Folder Include="Domain\Cores\Exceptions\" />
     <Folder Include="Domain\DatabaseContext\" />
   </ItemGroup>
 

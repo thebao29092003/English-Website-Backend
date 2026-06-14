@@ -5,25 +5,25 @@
 namespace English.Website.Migrations
 {
     /// <inheritdoc />
-    public partial class AddUserRoleV2 : Migration
+    public partial class addCurrentLimit : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "Role",
-                table: "Users",
-                type: "nvarchar(max)",
+            migrationBuilder.AddColumn<int>(
+                name: "ConcurrencyLimit",
+                table: "AIModelText",
+                type: "int",
                 nullable: false,
-                defaultValue: "");
+                defaultValue: 0);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "Role",
-                table: "Users");
+                name: "ConcurrencyLimit",
+                table: "AIModelText");
         }
     }
 }

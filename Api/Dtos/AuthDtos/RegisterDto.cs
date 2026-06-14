@@ -18,5 +18,9 @@ namespace English.Website.Api.Dtos.AuthDtos
         // 👇 Tự động so sánh khớp với trường Password ở trên
         [Compare("Password", ErrorMessage = "Mật khẩu nhập lại không khớp.")]
         public string RepeatPassword { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Mã OTP không được để trống.")]
+        [StringLength(6, MinimumLength = 6, ErrorMessage = "Mã OTP phải có đúng 6 chữ số.")]
+        public string Otp { get; set; } = string.Empty;
     }
 }
