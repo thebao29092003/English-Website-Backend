@@ -9,7 +9,7 @@ namespace English.Website.Api.Dtos.AIDtos
         public List<DeepSeekChoice>? Choices { get; set; }
 
         [JsonPropertyName("usage")]
-        public DeepSeekUsage? Usage { get; set; }
+        public DeepSeekUsageDto? Usage { get; set; }
     }
 
     public class DeepSeekMessage
@@ -28,7 +28,7 @@ namespace English.Website.Api.Dtos.AIDtos
         public DeepSeekMessage? Message { get; set; }
     }
 
-    public class DeepSeekUsage
+    public class DeepSeekUsageDto
     {
         [JsonPropertyName("prompt_tokens")]
         public int PromptTokens { get; set; }
@@ -39,6 +39,8 @@ namespace English.Website.Api.Dtos.AIDtos
         [JsonPropertyName("total_tokens")]
         public int TotalTokens { get; set; }
 
+        // thuộc tính này dưới với PromptCacheHitTokens là 1 
+        // nhưng cái dưới dùng để tương thích với sdk của openAI thôi
         [JsonPropertyName("prompt_tokens_details")]
         public PromptTokensDetails? PromptTokensDetails { get; set; }
 
@@ -62,5 +64,12 @@ namespace English.Website.Api.Dtos.AIDtos
     {
         [JsonPropertyName("reasoning_tokens")]
         public int ReasoningTokens { get; set; }
+    }
+
+    // Lớp bọc kết quả trả về chứa cả dữ liệu dạng Object và lượng Token đã tiêu thụ
+    public class DeepSeekResult<T>
+    {
+        public T? Data { get; set; }
+        public DeepSeekUsageDto? Usage { get; set; }
     }
 }

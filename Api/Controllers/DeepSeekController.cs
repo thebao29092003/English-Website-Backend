@@ -23,15 +23,14 @@ namespace English.Website.Api.Controllers
         [Authorize]
         public async Task<IActionResult> RequestAI([FromBody] TranscriptRequestDto transcriptRequest)
         {
-            var result = await _deepSeekService.AnalyzeSpeech(transcriptRequest);
-            var jsonParse = JsonNode.Parse(result);
+            var result = await _deepSeekService.CallDeepSeekApi(transcriptRequest);
             return Ok(new APIResponseBase
             {
                 isResponseResult = false,
                 success = true,
                 endPointCode = "deepseek.chat",
                 status = (int)HttpStatusCode.OK,
-                value = jsonParse,
+                value = result,
                 message = "DeepSeek response successfully"
             });
         }

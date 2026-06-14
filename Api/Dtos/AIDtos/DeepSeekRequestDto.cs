@@ -29,7 +29,7 @@ namespace English.Website.Api.Dtos.AIDtos
         [JsonPropertyName("max_tokens")]
         public int MaxTokens { get; set; }
 
-        [JsonPropertyName("thingking")]
+        [JsonPropertyName("thinking")]
         public required DeepSeekThingKingMode Thinking { get; set; } 
     }
 
