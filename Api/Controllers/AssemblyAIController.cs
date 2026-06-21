@@ -9,17 +9,17 @@ using whOperation.API.APIPayload;
 namespace English.Website.Api.Controllers
 {
 
-    [Route("api/deepseek")]
+    [Route("api/assembly")]
     [ApiController]
-    public class DeepSeekController : ControllerBase
+    public class AssemblyAIController : ControllerBase
     {
         private readonly IDeepSeekService _deepSeekService;
-        public DeepSeekController(IDeepSeekService deepSeekService)
+        public AssemblyAIController(IDeepSeekService deepSeekService)
         {
             _deepSeekService = deepSeekService;
         }
 
-        [HttpPost("chat")]
+        [HttpPost("speech-to-text")]
         [Authorize]
         public async Task<IActionResult> RequestAI([FromBody] TranscriptRequestDto transcriptRequest)
         {

@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace English.Website.Domain.Entities.AI
+namespace English.Website.Domain.Entities.AI.AIModelText
 {
     public class AIModelText
     {
