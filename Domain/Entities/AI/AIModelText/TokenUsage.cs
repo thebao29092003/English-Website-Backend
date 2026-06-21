@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace English.Website.Domain.Entities.AI
+namespace English.Website.Domain.Entities.AI.AIModelText
 {
     public class TokenUsage
     {
@@ -16,6 +16,9 @@ namespace English.Website.Domain.Entities.AI
 
         [Required]
         public int AIModelTextId { get; set; }
+
+        // ĐÃ SỬA: Bỏ [Required] và chuyển sang Guid? để cho phép giữ lại log tiền khi xóa bài học
+        public Guid? AIAnalysisId { get; set; }
 
         /// <summary>
         /// // Tổng số token tiêu thụ
@@ -60,11 +63,10 @@ namespace English.Website.Domain.Entities.AI
         /// tên của thuộc tính Khóa ngoại nằm ngay trong CÙNG bảng đó 
         /// </summary>
         [ForeignKey(nameof(AIModelTextId))]
-        public AIModelText AIModel { get; set; } = null!;
+        public AIModelText AIModelText { get; set; } = null!;
 
-        /// <summary>
-        /// Quan hệ 1 - 1 với kết quả phân tích bài học
-        /// </summary>
-        public AiAnalysis? AiAnalysis { get; set; }
+        // vì TokenUsage có sau AIAnalysis nên nó phải có khóa ngoại để tham chiếu
+        [ForeignKey(nameof(AIAnalysisId))]
+        public AIAnalysis? AIAnalysis { get; set; }
     }
 }

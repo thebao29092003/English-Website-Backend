@@ -12,14 +12,14 @@ using System.Text.Json;
 
 namespace English.Website.Application.Services
 {
-    public class DeepSeekService : IDeepSeekService
+    public class AssemblyAIService : IAssemblyAIService
     {
         private readonly string _apiKey;
         private readonly EnglishDBContext _englishDBContext;
         private readonly HttpClient _httpClient;
         private readonly IUserContextService _userContextService;
 
-        public DeepSeekService(
+        public AssemblyAIService(
             IConfiguration configuration,
             HttpClient httpClient,
             IUserContextService userContextService,

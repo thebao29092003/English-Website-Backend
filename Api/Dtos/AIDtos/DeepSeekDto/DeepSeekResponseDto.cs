@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace English.Website.Api.Dtos.AIDtos
+namespace English.Website.Api.Dtos.AIDtos.DeepSeekDto
 {
     // Cấu trúc Response nhận về từ DeepSeek
     public class DeepSeekResponseDto

@@ -3,7 +3,7 @@
 namespace English.Website.Application.Services.IServices
 {
 
-    public interface IDeepSeekService
+    public interface IAssemblyAIService
     {
 
         /// <summary>

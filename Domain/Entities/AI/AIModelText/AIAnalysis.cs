@@ -1,18 +1,17 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace English.Website.Domain.Entities.AI
+namespace English.Website.Domain.Entities.AI.AIModelText
 {
-    public class AiAnalysis
+    public class AIAnalysis
     {
         [Key]
-        public Guid AiAnalysisId { get; set; } = Guid.NewGuid();
+        public Guid AIAnalysisId { get; set; }
 
         [Required]
         public Guid UserId { get; set; }
 
-        [Required]
-        public Guid TokenUsageId { get; set; } // Khóa ngoại quan hệ 1-1 sang bảng TokenUsage
+        public Guid? AISpeechToTextId { get; set; }
 
         [Required]
         public string UserTranscript { get; set; } = null!; // Lưu vết đoạn text học sinh nói
@@ -22,7 +21,9 @@ namespace English.Website.Domain.Entities.AI
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        [ForeignKey(nameof(TokenUsageId))]
-        public TokenUsage TokenUsage { get; set; } = null!;
+        public TokenUsage? TokenUsage { get; set; }
+
+        [ForeignKey(nameof(AISpeechToTextId))]
+        public AISpeechToText? AISpeechToText { get; set; } // Trỏ ngược về thực thể cha
     }
 }

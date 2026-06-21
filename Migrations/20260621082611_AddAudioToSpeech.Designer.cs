@@ -4,6 +4,7 @@ using English.Website.Domain.DatabaseContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace English.Website.Migrations
 {
     [DbContext(typeof(EnglishDBContext))]
-    partial class EnglishDBContextModelSnapshot : ModelSnapshot
+    [Migration("20260621082611_AddAudioToSpeech")]
+    partial class AddAudioToSpeech
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -221,6 +224,13 @@ namespace English.Website.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<double>("AudioDuration")
+                        .HasColumnType("float");
+
+                    b.Property<string>("AudioUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -233,9 +243,6 @@ namespace English.Website.Migrations
                     b.Property<double>("PronunciationScore")
                         .HasColumnType("float");
 
-                    b.Property<Guid>("RecordingId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
@@ -245,49 +252,7 @@ namespace English.Website.Migrations
 
                     b.HasKey("AISpeechToTextId");
 
-                    b.HasIndex("RecordingId")
-                        .IsUnique();
-
                     b.ToTable("AISpeechToText");
-                });
-
-            modelBuilder.Entity("English.Website.Domain.Entities.Recording", b =>
-                {
-                    b.Property<Guid>("RecordingId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("CloudinaryPublicId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<double>("Duration")
-                        .HasColumnType("float");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<long>("FileSize")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("FileType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Url")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("RecordingId");
-
-                    b.ToTable("Recording");
                 });
 
             modelBuilder.Entity("English.Website.Domain.Entities.User", b =>
@@ -379,17 +344,6 @@ namespace English.Website.Migrations
                     b.Navigation("AIModelText");
                 });
 
-            modelBuilder.Entity("English.Website.Domain.Entities.AI.AISpeechToText", b =>
-                {
-                    b.HasOne("English.Website.Domain.Entities.Recording", "Recording")
-                        .WithOne("AISpeechToText")
-                        .HasForeignKey("English.Website.Domain.Entities.AI.AISpeechToText", "RecordingId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Recording");
-                });
-
             modelBuilder.Entity("English.Website.Domain.Entities.AI.AIModelAudio.AIModelAudio", b =>
                 {
                     b.Navigation("AudioUsages");
@@ -410,11 +364,6 @@ namespace English.Website.Migrations
                     b.Navigation("AIAnalysis");
 
                     b.Navigation("AudioUsage");
-                });
-
-            modelBuilder.Entity("English.Website.Domain.Entities.Recording", b =>
-                {
-                    b.Navigation("AISpeechToText");
                 });
 #pragma warning restore 612, 618
         }

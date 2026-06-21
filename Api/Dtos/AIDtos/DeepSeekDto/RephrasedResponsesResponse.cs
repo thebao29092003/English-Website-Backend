@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace English.Website.Api.Dtos.AIDtos
+namespace English.Website.Api.Dtos.AIDtos.DeepSeekDto
 {
     public class RephrasedResponsesResponse
     {
