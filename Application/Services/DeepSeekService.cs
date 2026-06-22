@@ -189,7 +189,7 @@ namespace English.Website.Application.Services
                                       (decimal)0.28 * completionTokens) / 1000000
                 };
 
-                _englishDBContext.TokenUsage.Add(tokenUsage);
+                await _englishDBContext.TokenUsage.AddAsync(tokenUsage);
 
                 var jsonOptions = new JsonSerializerOptions
                 {
@@ -209,7 +209,7 @@ namespace English.Website.Application.Services
                     AnalysisContentJson = mergedJsonContent ?? "AI not response"
                 };
 
-                _englishDBContext.AIAnalysis.Add(aiAnalysis);
+                await _englishDBContext.AIAnalysis.AddAsync(aiAnalysis);
 
                 await _englishDBContext.SaveChangesAsync();
                 await transaction.CommitAsync();

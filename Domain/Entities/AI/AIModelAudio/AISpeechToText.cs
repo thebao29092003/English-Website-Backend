@@ -14,7 +14,7 @@ namespace English.Website.Domain.Entities.AI
         [Required]
         public Guid RecordingId { get; set; } // Khóa ngoại trỏ đến thực thể cha là Recording
 
-        public string AssemblyAiId { get; set; } = string.Empty; // Lưu "id": "fa80326b-..." để đối soát khi cần
+        public string AssemblyAIId { get; set; } = string.Empty; // Lưu "id": "fa80326b-..." để đối soát khi cần
         public string AITranscript { get; set; } = string.Empty; // "text" - Lưu transcript gốc tại đây
 
         public double OverallConfidence { get; set; } // "confidence": 0.8949 -> Điểm phát âm tổng quan của mô hình

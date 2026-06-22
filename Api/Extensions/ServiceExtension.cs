@@ -27,6 +27,8 @@ namespace English.Website.Api.Extensions
             services.AddScoped<ForgetPasswordService>();
             services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<IUserContextService, UserContextService>();
+            services.AddScoped<ICloudinaryService, CloudinaryService>();
+            services.AddScoped<IAssemblyAIService, AssemblyAIService>();
 
             // 3. Đăng ký AutoMapper
             // cfg => { } để viết riêng map thôi mình có file riêng rồi nên không cần

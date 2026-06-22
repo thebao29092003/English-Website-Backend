@@ -1,26 +1,46 @@
 ﻿using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
+using English.Website.Api.Dtos.AIDtos.AzureSpeechDto;
 using English.Website.Api.Dtos.CloudinaryDtos;
 using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services.IServices;
+using English.Website.Domain.DatabaseContext;
+using English.Website.Domain.Entities;
 
 namespace English.Website.Application.Services
 {
     public class CloudinaryService : ICloudinaryService
     {
         private readonly Cloudinary _cloudinary;
+        private readonly EnglishDBContext _dbContext;
+        private readonly IUserContextService _userContextService;
+        private readonly IAssemblyAIService _assemblyAIService;
 
-        public CloudinaryService(Cloudinary cloudinary)
+        public CloudinaryService(
+            Cloudinary cloudinary,
+            EnglishDBContext dbContext,
+            IAssemblyAIService assemblyAIService,
+            IUserContextService userContextService)
         {
             _cloudinary = cloudinary;
+            _dbContext = dbContext;
+            _userContextService = userContextService;
+            _assemblyAIService = assemblyAIService;
         }
 
-        public async Task<UploadResponseDto> UploadFileAsync(UploadRequestDto requestDto)
+        public async Task<string?> UploadFileAsync(UploadRequestDto requestDto)
         {
+            const long MaxFileSize = 5 * 1024 * 1024; // 5 MB
+
+            var user = await _userContextService.GetUserDetail();
             var file = requestDto.File;
             if (file == null || file.Length == 0)
             {
                 throw new BadRequestException("Invalid file");
+            }
+            if(file.Length > MaxFileSize)
+            {
+                throw new BadRequestException("File must smaller 5MB");
             }
 
             var allowedExtensions = new[] { ".mp3", ".wav", ".m4a", ".aac", ".wma" };
@@ -48,20 +68,43 @@ namespace English.Website.Application.Services
             };
 
             var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+           
 
             if (uploadResult.Error != null)
             {
                 throw new BadRequestException($"Error from Cloudinary: {uploadResult.Error.Message}");
             }
 
-            return new UploadResponseDto
+            var secureUrl = uploadResult.SecureUrl?.ToString();
+
+            if (string.IsNullOrEmpty(secureUrl))
             {
-                PublicId = uploadResult.PublicId,
-                SecureUrl = uploadResult.SecureUrl?.ToString(),
-                DisplayName = uploadResult.DisplayName,
-                AssetFolder = uploadResult.AssetFolder,
-                ResourceType = uploadResult.ResourceType
+                throw new BadRequestException("Invalid SecureUrl");
+            }
+
+            var assemblyAIRequestDto = new AssemblyAIRequestDto
+            {
+                AudioUrl = secureUrl,
             };
+
+            // gọi api Assembly AI
+            var transcript =  await _assemblyAIService.SubmitAudio(assemblyAIRequestDto);
+
+            // lưu database
+            await _dbContext.Recording.AddAsync(new Recording
+            {
+                UserId = user.UserId,
+                CloudinaryPublicId = uploadResult.PublicId,
+                Url = secureUrl,
+                FileName = uploadResult.DisplayName,
+                FileSize = uploadResult.Bytes,
+                FileType = uploadResult.Format,
+                Duration = uploadResult.Duration,
+            });
+            await _dbContext.SaveChangesAsync();
+
+            return transcript;
+          
         }
     }
 }

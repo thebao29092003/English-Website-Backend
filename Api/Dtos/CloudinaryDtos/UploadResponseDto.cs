@@ -6,6 +6,7 @@
         public string? SecureUrl { get; set; }
         public string? DisplayName { get; set; }
         public string? AssetFolder { get; set; }
-        public string? ResourceType { get; set; }
+        public string Format { get; set; } = string.Empty;
+        public long Bytes { get; set; }
     }
 }

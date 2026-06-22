@@ -1,4 +1,6 @@
-﻿using English.Website.Api.Dtos.AIDtos.DeepSeekDto;
+﻿using English.Website.Api.Dtos.AIDtos.AssemblyAIDto;
+using English.Website.Api.Dtos.AIDtos.DeepSeekDto;
+using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,26 +15,38 @@ namespace English.Website.Api.Controllers
     [ApiController]
     public class AssemblyAIController : ControllerBase
     {
-        private readonly IDeepSeekService _deepSeekService;
-        public AssemblyAIController(IDeepSeekService deepSeekService)
+        private readonly string _webhookAuth; 
+        public AssemblyAIController(
+            IConfiguration configuration)
         {
-            _deepSeekService = deepSeekService;
+            _webhookAuth = configuration["AI:AssemblyAIKey"]!;
         }
 
-        [HttpPost("speech-to-text")]
-        [Authorize]
-        public async Task<IActionResult> RequestAI([FromBody] TranscriptRequestDto transcriptRequest)
+        [HttpPost("webhook")]
+        public async Task<IActionResult> AssemblyAIWebhook([FromBody] AssemblyAiWebhookDto webhookData)
         {
-            var result = await _deepSeekService.CallDeepSeekApi(transcriptRequest);
-            return Ok(new APIResponseBase
+            if (!Request.Headers.TryGetValue("X-Webhook-Secret", out var receivedSecret) ||
+                receivedSecret != _webhookAuth)
             {
-                isResponseResult = false,
-                success = true,
-                endPointCode = "deepseek.chat",
-                status = (int)HttpStatusCode.OK,
-                value = result,
-                message = "DeepSeek response successfully"
-            });
+                return Unauthorized(new { message = "Unauthorized webhook request." });
+            }
+
+            if (webhookData.Status == "completed")
+            {
+                try
+                {
+                    // Gọi Orchestrator để tải kết quả, tính điểm, gọi DeepSeek song song và lưu DB
+                    //await _orchestrator.HandleCompletedTranscriptionAsync(webhookData.TranscriptId);
+                    return StatusCode(200);
+                }
+                catch (Exception ex)
+                {
+                    // Ghi log lỗi lại nhưng vẫn nên trả về 200/500 tùy ý để báo cho AssemblyAI biết
+                    Console.WriteLine($"Error processing completed transcription: {ex.Message}");
+                    return StatusCode(500, new { error = ex.Message });
+                }
+            }
+            return BadRequest(new { message = "Transcription failed on AssemblyAI server." });
         }
 
     }
