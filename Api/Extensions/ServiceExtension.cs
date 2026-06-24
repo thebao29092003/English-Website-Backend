@@ -29,6 +29,8 @@ namespace English.Website.Api.Extensions
             services.AddScoped<IUserContextService, UserContextService>();
             services.AddScoped<ICloudinaryService, CloudinaryService>();
             services.AddScoped<IAssemblyAIService, AssemblyAIService>();
+            services.AddScoped<IBackendPythonService, BackendPythonService>();
+            services.AddScoped<AISpeechToTextService>();
 
             // 3. Đăng ký AutoMapper
             // cfg => { } để viết riêng map thôi mình có file riêng rồi nên không cần

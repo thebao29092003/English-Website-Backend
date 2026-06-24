@@ -22,6 +22,7 @@ namespace English.Website.Api.Controllers
             _webhookAuth = configuration["AI:AssemblyAIKey"]!;
         }
 
+        // Này là endpoint trả về cho AssemblyAI nên nó khác những endpoint kia
         [HttpPost("webhook")]
         public async Task<IActionResult> AssemblyAIWebhook([FromBody] AssemblyAiWebhookDto webhookData)
         {
@@ -35,7 +36,8 @@ namespace English.Website.Api.Controllers
             {
                 try
                 {
-                    // Gọi Orchestrator để tải kết quả, tính điểm, gọi DeepSeek song song và lưu DB
+                    // Gọi api lấy text -> gọi deepseek
+                    //             text -> gọi api python => âm vị
                     //await _orchestrator.HandleCompletedTranscriptionAsync(webhookData.TranscriptId);
                     return StatusCode(200);
                 }

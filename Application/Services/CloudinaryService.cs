@@ -1,11 +1,13 @@
 ﻿using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using English.Website.Api.Dtos.AIDtos.AzureSpeechDto;
+using English.Website.Api.Dtos.AIDtos.BackendPythonDto;
 using English.Website.Api.Dtos.CloudinaryDtos;
 using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services.IServices;
 using English.Website.Domain.DatabaseContext;
 using English.Website.Domain.Entities;
+using English.Website.Domain.Entities.AI;
 
 namespace English.Website.Application.Services
 {
@@ -15,17 +17,20 @@ namespace English.Website.Application.Services
         private readonly EnglishDBContext _dbContext;
         private readonly IUserContextService _userContextService;
         private readonly IAssemblyAIService _assemblyAIService;
+        private readonly IBackendPythonService _backendPythonService;
 
         public CloudinaryService(
             Cloudinary cloudinary,
             EnglishDBContext dbContext,
             IAssemblyAIService assemblyAIService,
+            IBackendPythonService backendPythonService,
             IUserContextService userContextService)
         {
             _cloudinary = cloudinary;
             _dbContext = dbContext;
             _userContextService = userContextService;
             _assemblyAIService = assemblyAIService;
+            _backendPythonService = backendPythonService;
         }
 
         public async Task<string?> UploadFileAsync(UploadRequestDto requestDto)
@@ -38,7 +43,7 @@ namespace English.Website.Application.Services
             {
                 throw new BadRequestException("Invalid file");
             }
-            if(file.Length > MaxFileSize)
+            if (file.Length > MaxFileSize)
             {
                 throw new BadRequestException("File must smaller 5MB");
             }
@@ -68,7 +73,7 @@ namespace English.Website.Application.Services
             };
 
             var uploadResult = await _cloudinary.UploadAsync(uploadParams);
-           
+
 
             if (uploadResult.Error != null)
             {
@@ -87,12 +92,31 @@ namespace English.Website.Application.Services
                 AudioUrl = secureUrl,
             };
 
+            var recordingId = Guid.NewGuid();
+
             // gọi api Assembly AI
-            var transcript =  await _assemblyAIService.SubmitAudio(assemblyAIRequestDto);
+            var transcriptId = await _assemblyAIService.SubmitAudio(assemblyAIRequestDto);
+
+            await _dbContext.AISpeechToText.AddAsync(new AISpeechToText
+            {
+                RecordingId = recordingId,
+                UserId = user.UserId,
+                AssemblyAIId = transcriptId
+            });
+
+            // gọi api wav2vec2 python param RecordingId
+            await _backendPythonService.ConvertAudioToPhonetic(new RequestConvertAudioPhoneticDto
+            {
+                AudioPath  = secureUrl,
+                RecordingId = recordingId,
+                CallbackUrl = "https://localhost:7025/api/backend-python/phonetic-webhook"
+            });
+
 
             // lưu database
             await _dbContext.Recording.AddAsync(new Recording
             {
+                RecordingId = recordingId,
                 UserId = user.UserId,
                 CloudinaryPublicId = uploadResult.PublicId,
                 Url = secureUrl,
@@ -103,8 +127,8 @@ namespace English.Website.Application.Services
             });
             await _dbContext.SaveChangesAsync();
 
-            return transcript;
-          
+            return transcriptId;
+
         }
     }
 }
