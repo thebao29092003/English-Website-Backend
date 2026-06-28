@@ -45,7 +45,7 @@ namespace English.Website.Api.Controllers
 
                 Console.WriteLine($"[Webhook] Successfully saved phonemes for Recording: {webhookData.RecordingId}");
 
-                // (Tùy chọn) Đẩy SignalR thông báo cho React Client ở đây nếu muốn real-time!
+                // TÙY TRỌN ĐẨY SignalR (dùng khi có frontend)
                 return StatusCode(200);
             }
             catch (Exception ex)

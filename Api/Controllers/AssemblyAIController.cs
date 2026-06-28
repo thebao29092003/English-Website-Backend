@@ -1,12 +1,6 @@
 ﻿using English.Website.Api.Dtos.AIDtos.AssemblyAIDto;
-using English.Website.Api.Dtos.AIDtos.DeepSeekDto;
-using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services.IServices;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Net;
-using System.Text.Json.Nodes;
-using whOperation.API.APIPayload;
 
 namespace English.Website.Api.Controllers
 {
@@ -15,11 +9,19 @@ namespace English.Website.Api.Controllers
     [ApiController]
     public class AssemblyAIController : ControllerBase
     {
-        private readonly string _webhookAuth; 
+        private readonly string _webhookAuth;
+        private readonly IAssemblyAIService _assemblyAIService;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
+
         public AssemblyAIController(
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IAssemblyAIService assemblyAIService,
+            IServiceScopeFactory serviceScopeFactory
+        )
         {
             _webhookAuth = configuration["AI:AssemblyAIKey"]!;
+            _assemblyAIService = assemblyAIService;
+            _serviceScopeFactory = serviceScopeFactory;
         }
 
         // Này là endpoint trả về cho AssemblyAI nên nó khác những endpoint kia
@@ -34,21 +36,24 @@ namespace English.Website.Api.Controllers
 
             if (webhookData.Status == "completed")
             {
-                try
-                {
-                    // Gọi api lấy text -> gọi deepseek
-                    //             text -> gọi api python => âm vị
-                    //await _orchestrator.HandleCompletedTranscriptionAsync(webhookData.TranscriptId);
-                    return StatusCode(200);
-                }
-                catch (Exception ex)
-                {
-                    // Ghi log lỗi lại nhưng vẫn nên trả về 200/500 tùy ý để báo cho AssemblyAI biết
-                    Console.WriteLine($"Error processing completed transcription: {ex.Message}");
-                    return StatusCode(500, new { error = ex.Message });
-                }
+
+                _ = Task.Run(async () =>
+                    {
+                        // Tạo một Scope mới độc lập với vòng đời của HTTP Request
+                        using var scope = _serviceScopeFactory.CreateScope();
+
+                        // Lấy các Service cần thiết từ Scope mới này
+                        // Các dịch vụ này sẽ không bị giải phóng khi Controller trả về kết quả
+                        var assemblyAIService = scope.ServiceProvider.GetRequiredService<IAssemblyAIService>();
+
+                        // Tiến hành tải dữ liệu, chấm điểm và gọi DeepSeek song song dưới nền
+                        await assemblyAIService.GetDataAssemblyAI(webhookData.TranscriptId);
+                    }
+                );
+
+
             }
-            return BadRequest(new { message = "Transcription failed on AssemblyAI server." });
+            return StatusCode(200);
         }
 
     }

@@ -23,13 +23,13 @@ namespace English.Website.Api.Dtos.AIDtos.AssemblyAIDto
         public double? Confidence { get; set; } // Độ tự tin tổng thể
 
         [JsonPropertyName("words")]
-        public List<AssemblyAiWordDto>? Words { get; set; } // Danh sách từ chi tiết [3.1.5]
+        public List<AssemblyAIWordDto>? Words { get; set; } // Danh sách từ chi tiết [3.1.5]
 
         [JsonPropertyName("error")]
         public string? Error { get; set; } // Chứa thông báo lỗi nếu dịch thất bại
     }
     // 3. DTO mô tả chi tiết từng từ để tính Fluency/Pronunciation sau này [3.1.5]
-    public class AssemblyAiWordDto
+    public class AssemblyAIWordDto
     {
         [JsonPropertyName("text")]
         public string Text { get; set; } = null!;

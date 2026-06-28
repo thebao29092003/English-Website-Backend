@@ -38,9 +38,9 @@ namespace English.Website.Application.Services
         }
 
         // này chỉ trả về statusCode và messgase là processing đi
-        public async Task<ResponseConvertAudioPhoneticDto?> ConvertAudioToPhonetic(RequestConvertAudioPhoneticDto requestConvert)
+        public async Task ConvertAudioToPhonetic(RequestConvertAudioPhoneticDto requestConvert)
         {
-            var URL = "http://localhost:8000/transcribe/wav2vec2";
+            var URL = "http://localhost:8000/api/v1/convert-audio-phonetic/wav2vec2";
 
             var jsonPayload = JsonSerializer.Serialize(requestConvert);
 
@@ -56,9 +56,12 @@ namespace English.Website.Application.Services
             }
 
             var submitResult = JsonSerializer.Deserialize<ResponseConvertAudioPhoneticDto>(content)
-                ?? throw new BadRequestException($"resul backend python is null: {content}"); ;
+                ?? throw new BadRequestException($"result backend python is null: {content}");
 
-            return submitResult;
+            if(submitResult.statusCode != 202)
+            {
+                throw new BadRequestException($"convert text to phonetic faild");
+            }
         }
     }
 }

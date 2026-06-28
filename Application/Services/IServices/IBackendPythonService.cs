@@ -5,6 +5,6 @@ namespace English.Website.Application.Services.IServices
 {
     public interface IBackendPythonService
     {
-        Task<ResponseConvertAudioPhoneticDto?> ConvertAudioToPhonetic(RequestConvertAudioPhoneticDto requestConvert);
+        Task ConvertAudioToPhonetic(RequestConvertAudioPhoneticDto requestConvert);
     }
 }

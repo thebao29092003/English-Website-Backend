@@ -19,6 +19,7 @@ namespace English.Website.Application.Services
             var sttRecord = _dbContext.AISpeechToText.FirstOrDefault(s => s.RecordingId == Guid.Parse(webhookData.RecordingId))
                 ?? throw new BadRequestException("Not found AISpeechToText by RecordingId");
 
+
             // Cập nhật chuỗi âm vị thu được từ Wav2Vec2 vào DB
             sttRecord.PhoneticTranscript = webhookData.Phonemes;
             await _dbContext.SaveChangesAsync();

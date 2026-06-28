@@ -95,7 +95,7 @@ namespace English.Website.Application.Services
             var recordingId = Guid.NewGuid();
 
             // gọi api Assembly AI
-            var transcriptId = await _assemblyAIService.SubmitAudio(assemblyAIRequestDto);
+            var transcriptId = await _assemblyAIService.SubmitAudioAssemblyAI(assemblyAIRequestDto);
 
             await _dbContext.AISpeechToText.AddAsync(new AISpeechToText
             {
