@@ -1,13 +1,11 @@
 ﻿
 using CloudinaryDotNet;
 using English.Website.Api.Extensions.Helpers;
-using English.Website.Application.Extend;
 using English.Website.Application.Services;
 using English.Website.Application.Services.IServices;
 using English.Website.Domain.Cores.Exceptions;
 using English.Website.Domain.DatabaseContext;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
@@ -18,18 +16,24 @@ namespace English.Website.Api.Extensions
     {
         public static void AddServices(this IServiceCollection services, IConfiguration configuration)
         {
+            // Add services to the container.
+
+            services.AddControllers();
+            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+            services.AddEndpointsApiExplorer();
+            services.AddSwaggerGen();
+
             // 1. Đăng ký DbContext
             services.AddDbContext<EnglishDBContext>(options =>
                 options.UseSqlServer(configuration.GetConnectionString("englistWebsite")));
 
-            // 2. Đăng ký Database Services (Không dùng Interface)
+            // 2. Khai báo container để sử dụng được DI
+            // tạo ra mỗi instance duy nhất với mỗi request
             services.AddScoped<AuthService>();
             services.AddScoped<ForgetPasswordService>();
             services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<IUserContextService, UserContextService>();
             services.AddScoped<ICloudinaryService, CloudinaryService>();
-            services.AddScoped<IAssemblyAIService, AssemblyAIService>();
-            services.AddScoped<IBackendPythonService, BackendPythonService>();
             services.AddScoped<AISpeechToTextService>();
 
             // 3. Đăng ký AutoMapper
@@ -52,8 +56,11 @@ namespace English.Website.Api.Extensions
 
             // 👇 ĐĂNG KÝ CẦU NỐI ĐỂ SERVICE CÓ THỂ ĐỌC/GHI COOKIE
             services.AddHttpContextAccessor();
-
+            
+            //NÀO  SỬ DỤNG HTTP THÌ PHẢI KHAI BÁO
             services.AddHttpClient<IDeepSeekService, DeepSeekService>();
+            services.AddHttpClient<IAssemblyAIService, AssemblyAIService>();
+            services.AddHttpClient<IBackendPythonService, BackendPythonService>();
 
             // register authentication
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

@@ -1,7 +1,7 @@
 ﻿using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using English.Website.Api.Dtos.AIDtos.AzureSpeechDto;
-using English.Website.Api.Dtos.AIDtos.BackendPythonDto;
+using English.Website.Api.Dtos.BackendPythonDtos;
 using English.Website.Api.Dtos.CloudinaryDtos;
 using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services.IServices;

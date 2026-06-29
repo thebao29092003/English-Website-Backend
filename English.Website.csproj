@@ -32,6 +32,7 @@
 
   <ItemGroup>
     <Folder Include="Api\CacheService\" />
+    <Folder Include="Api\Dtos\AIDtos\BackendPythonDto\" />
     <Folder Include="Api\Extensions\AIOutputText\" />
     <Folder Include="Application\Dtos\" />
     <Folder Include="Domain\Constants\" />

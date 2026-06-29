@@ -42,9 +42,6 @@ namespace English.Website.Api.Controllers
             try
             {
                 await _aiSpeechToTextService.Update(webhookData);
-
-                Console.WriteLine($"[Webhook] Successfully saved phonemes for Recording: {webhookData.RecordingId}");
-
                 // TÙY TRỌN ĐẨY SignalR (dùng khi có frontend)
                 return StatusCode(200);
             }

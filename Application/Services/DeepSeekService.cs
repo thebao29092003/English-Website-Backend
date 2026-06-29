@@ -1,5 +1,4 @@
-﻿using AutoMapper;
-using English.Website.Api.Dtos.AIDtos.DeepSeekDto;
+﻿using English.Website.Api.Dtos.AIDtos.DeepSeekDto;
 using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Extend;
 using English.Website.Application.Services.IServices;

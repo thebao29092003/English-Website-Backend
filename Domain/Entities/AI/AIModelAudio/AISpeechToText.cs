@@ -20,6 +20,9 @@ namespace English.Website.Domain.Entities.AI
         public double? OverallConfidence { get; set; } // "confidence": 0.8949 -> Điểm phát âm tổng quan của mô hình
 
         public string? WordsJson { get; set; } = string.Empty;
+        public string? WordsPronunciationScore { get; set; }
+
+        public int? WordPerMinute { get; set; }
 
         public double? FluencyScore { get; set; } // Điểm trôi chảy tự tính
         public double? PronunciationScore { get; set; } // Điểm phát âm
