@@ -1,10 +1,6 @@
-﻿using English.Website.Api.Dtos.AIDtos.DeepSeekDto;
+﻿using English.Website.Api.Dtos.AIDtos.AssemblyAIDto;
 using English.Website.Application.Services.IServices;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Net;
-using System.Text.Json.Nodes;
-using whOperation.API.APIPayload;
 
 namespace English.Website.Api.Controllers
 {
@@ -13,26 +9,51 @@ namespace English.Website.Api.Controllers
     [ApiController]
     public class AssemblyAIController : ControllerBase
     {
-        private readonly IDeepSeekService _deepSeekService;
-        public AssemblyAIController(IDeepSeekService deepSeekService)
+        private readonly string _webhookAuth;
+        private readonly IAssemblyAIService _assemblyAIService;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
+
+        public AssemblyAIController(
+            IConfiguration configuration,
+            IAssemblyAIService assemblyAIService,
+            IServiceScopeFactory serviceScopeFactory
+        )
         {
-            _deepSeekService = deepSeekService;
+            _webhookAuth = configuration["AI:AssemblyAIKey"]!;
+            _assemblyAIService = assemblyAIService;
+            _serviceScopeFactory = serviceScopeFactory;
         }
 
-        [HttpPost("speech-to-text")]
-        [Authorize]
-        public async Task<IActionResult> RequestAI([FromBody] TranscriptRequestDto transcriptRequest)
+        // Này là endpoint trả về cho AssemblyAI nên nó khác những endpoint kia
+        [HttpPost("webhook")]
+        public async Task<IActionResult> AssemblyAIWebhook([FromBody] AssemblyAiWebhookDto webhookData)
         {
-            var result = await _deepSeekService.CallDeepSeekApi(transcriptRequest);
-            return Ok(new APIResponseBase
+            if (!Request.Headers.TryGetValue("X-Webhook-Secret", out var receivedSecret) ||
+                receivedSecret != _webhookAuth)
             {
-                isResponseResult = false,
-                success = true,
-                endPointCode = "deepseek.chat",
-                status = (int)HttpStatusCode.OK,
-                value = result,
-                message = "DeepSeek response successfully"
-            });
+                return Unauthorized(new { message = "Unauthorized webhook request." });
+            }
+
+            if (webhookData.Status == "completed")
+            {
+
+                _ = Task.Run(async () =>
+                    {
+                        // Tạo một Scope mới độc lập với vòng đời của HTTP Request
+                        using var scope = _serviceScopeFactory.CreateScope();
+
+                        // Lấy các Service cần thiết từ Scope mới này
+                        // Các dịch vụ này sẽ không bị giải phóng khi Controller trả về kết quả
+                        var assemblyAIService = scope.ServiceProvider.GetRequiredService<IAssemblyAIService>();
+
+                        // Tiến hành tải dữ liệu, chấm điểm và gọi DeepSeek song song dưới nền
+                        await assemblyAIService.GetDataAssemblyAI(webhookData.TranscriptId);
+                    }
+                );
+
+
+            }
+            return StatusCode(200);
         }
 
     }

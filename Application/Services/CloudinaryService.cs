@@ -1,26 +1,51 @@
 ﻿using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
+using English.Website.Api.Dtos.AIDtos.AzureSpeechDto;
+using English.Website.Api.Dtos.BackendPythonDtos;
 using English.Website.Api.Dtos.CloudinaryDtos;
 using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services.IServices;
+using English.Website.Domain.DatabaseContext;
+using English.Website.Domain.Entities;
+using English.Website.Domain.Entities.AI;
 
 namespace English.Website.Application.Services
 {
     public class CloudinaryService : ICloudinaryService
     {
         private readonly Cloudinary _cloudinary;
+        private readonly EnglishDBContext _dbContext;
+        private readonly IUserContextService _userContextService;
+        private readonly IAssemblyAIService _assemblyAIService;
+        private readonly IBackendPythonService _backendPythonService;
 
-        public CloudinaryService(Cloudinary cloudinary)
+        public CloudinaryService(
+            Cloudinary cloudinary,
+            EnglishDBContext dbContext,
+            IAssemblyAIService assemblyAIService,
+            IBackendPythonService backendPythonService,
+            IUserContextService userContextService)
         {
             _cloudinary = cloudinary;
+            _dbContext = dbContext;
+            _userContextService = userContextService;
+            _assemblyAIService = assemblyAIService;
+            _backendPythonService = backendPythonService;
         }
 
-        public async Task<UploadResponseDto> UploadFileAsync(UploadRequestDto requestDto)
+        public async Task<string?> UploadFileAsync(UploadRequestDto requestDto)
         {
+            const long MaxFileSize = 5 * 1024 * 1024; // 5 MB
+
+            var user = await _userContextService.GetUserDetail();
             var file = requestDto.File;
             if (file == null || file.Length == 0)
             {
                 throw new BadRequestException("Invalid file");
+            }
+            if (file.Length > MaxFileSize)
+            {
+                throw new BadRequestException("File must smaller 5MB");
             }
 
             var allowedExtensions = new[] { ".mp3", ".wav", ".m4a", ".aac", ".wma" };
@@ -49,19 +74,61 @@ namespace English.Website.Application.Services
 
             var uploadResult = await _cloudinary.UploadAsync(uploadParams);
 
+
             if (uploadResult.Error != null)
             {
                 throw new BadRequestException($"Error from Cloudinary: {uploadResult.Error.Message}");
             }
 
-            return new UploadResponseDto
+            var secureUrl = uploadResult.SecureUrl?.ToString();
+
+            if (string.IsNullOrEmpty(secureUrl))
             {
-                PublicId = uploadResult.PublicId,
-                SecureUrl = uploadResult.SecureUrl?.ToString(),
-                DisplayName = uploadResult.DisplayName,
-                AssetFolder = uploadResult.AssetFolder,
-                ResourceType = uploadResult.ResourceType
+                throw new BadRequestException("Invalid SecureUrl");
+            }
+
+            var assemblyAIRequestDto = new AssemblyAIRequestDto
+            {
+                AudioUrl = secureUrl,
             };
+
+            var recordingId = Guid.NewGuid();
+
+            // gọi api Assembly AI
+            var transcriptId = await _assemblyAIService.SubmitAudioAssemblyAI(assemblyAIRequestDto);
+
+            await _dbContext.AISpeechToText.AddAsync(new AISpeechToText
+            {
+                RecordingId = recordingId,
+                UserId = user.UserId,
+                AssemblyAIId = transcriptId
+            });
+
+            // gọi api wav2vec2 python param RecordingId
+            await _backendPythonService.ConvertAudioToPhonetic(new RequestConvertAudioPhoneticDto
+            {
+                AudioPath  = secureUrl,
+                RecordingId = recordingId,
+                CallbackUrl = "https://localhost:7025/api/backend-python/phonetic-webhook"
+            });
+
+
+            // lưu database
+            await _dbContext.Recording.AddAsync(new Recording
+            {
+                RecordingId = recordingId,
+                UserId = user.UserId,
+                CloudinaryPublicId = uploadResult.PublicId,
+                Url = secureUrl,
+                FileName = uploadResult.DisplayName,
+                FileSize = uploadResult.Bytes,
+                FileType = uploadResult.Format,
+                Duration = uploadResult.Duration,
+            });
+            await _dbContext.SaveChangesAsync();
+
+            return transcriptId;
+
         }
     }
 }

@@ -14,16 +14,20 @@ namespace English.Website.Domain.Entities.AI
         [Required]
         public Guid RecordingId { get; set; } // Khóa ngoại trỏ đến thực thể cha là Recording
 
-        public string AssemblyAiId { get; set; } = string.Empty; // Lưu "id": "fa80326b-..." để đối soát khi cần
-        public string AITranscript { get; set; } = string.Empty; // "text" - Lưu transcript gốc tại đây
+        public string? AssemblyAIId { get; set; } // Lưu "id": "fa80326b-..." để đối soát khi cần
+        public string? AITranscript { get; set; } // "text" - Lưu transcript gốc tại đây
 
-        public double OverallConfidence { get; set; } // "confidence": 0.8949 -> Điểm phát âm tổng quan của mô hình
+        public double? OverallConfidence { get; set; } // "confidence": 0.8949 -> Điểm phát âm tổng quan của mô hình
 
-        public string WordsJson { get; set; } = string.Empty;
+        public string? WordsJson { get; set; } = string.Empty;
+        public string? WordsPronunciationScore { get; set; }
 
-        public double FluencyScore { get; set; } // Điểm trôi chảy tự tính
-        public double PronunciationScore { get; set; } // Điểm phát âm
+        public int? WordPerMinute { get; set; }
 
+        public double? FluencyScore { get; set; } // Điểm trôi chảy tự tính
+        public double? PronunciationScore { get; set; } // Điểm phát âm
+
+        public string? PhoneticTranscript { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

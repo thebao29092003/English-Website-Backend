@@ -25,7 +25,7 @@ namespace English.Website.Api.Controllers
             var result = await _cloudinaryService.UploadFileAsync(requestDto);
             return Ok(new APIResponseBase
             {
-                isResponseResult = false,
+                isResponseResult = true,
                 success = true,
                 endPointCode = "cloudinary.upload",
                 status = (int)HttpStatusCode.OK,

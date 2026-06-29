@@ -61,7 +61,7 @@ namespace English.Website.Api.Controllers
                 endPointCode = "auth.login",
                 status = (int)HttpStatusCode.OK,
                 value = result.AccessToken,
-                message = MessageConstants.GetDataMessage(true, "user")
+                message = "Get user successfull"
             });
         }
 
@@ -76,7 +76,7 @@ namespace English.Website.Api.Controllers
                 endPointCode = "auth.refreshToken",
                 status = (int)HttpStatusCode.OK,
                 value = result.AccessToken,
-                message = MessageConstants.GetDataMessage(true, "refresh token")
+                message = "Get refresh token successfull"
             });
         }
 

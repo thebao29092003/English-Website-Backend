@@ -1,13 +1,9 @@
-﻿using AutoMapper;
-using English.Website.Api.Dtos.AIDtos.DeepSeekDto;
+﻿using English.Website.Api.Dtos.AIDtos.AssemblyAIDto;
+using English.Website.Api.Dtos.AIDtos.AzureSpeechDto;
 using English.Website.Api.Extensions.Helpers;
-using English.Website.Application.Extend;
 using English.Website.Application.Services.IServices;
 using English.Website.Domain.DatabaseContext;
-using English.Website.Domain.Entities.AI.AIModelText;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Text.Encodings.Web;
+using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
 namespace English.Website.Application.Services
@@ -15,211 +11,160 @@ namespace English.Website.Application.Services
     public class AssemblyAIService : IAssemblyAIService
     {
         private readonly string _apiKey;
+        private readonly string _webhookAuth;
         private readonly EnglishDBContext _englishDBContext;
         private readonly HttpClient _httpClient;
-        private readonly IUserContextService _userContextService;
 
         public AssemblyAIService(
             IConfiguration configuration,
             HttpClient httpClient,
-            IUserContextService userContextService,
             EnglishDBContext englishDBContext
         )
         {
             _httpClient = httpClient;
-            _apiKey = configuration["AI:DeepSeekApiKey"]!;
-            _userContextService = userContextService;
+            _apiKey = configuration["AI:AssemblyAIKey"]!;
+            _webhookAuth = configuration["AI:AssemblyAIKey"]!;
             _englishDBContext = englishDBContext;
         }
 
-        private HttpRequestMessage PrepareCallApi(string systemPrompt, string userPrompt, Guid userId)
+        public async Task GetDataAssemblyAI(string transcriptId)
         {
-            var requestUrl = "https://api.deepseek.com/chat/completions";
+            var headers = new Dictionary<string, string> { { "Authorization", _apiKey } };
 
-            var requestBody = new DeepSeekRequestDto
-            {
-                Model = "deepseek-v4-flash", // Hoặc model tương ứng của bạn
-                Messages = new List<DeepSeekMessage>
-            {
-                new DeepSeekMessage { Role = "system", Content = systemPrompt },
-                new DeepSeekMessage { Role = "user", Content = userPrompt }
-            },
-                ResponseFormat = new DeepSeekResponseFormat { Type = "json_object" },
-                Temperature = 0.2,
-                UserId = userId,
-                Thinking = new DeepSeekThingKingMode { Type = "disabled" },
-                MaxTokens = 2048
-            };
-            // Chuyển từ object sang string JSON
-            var jsonPayload = JsonSerializer.Serialize(requestBody);
-            var request = new HttpRequestMessage(HttpMethod.Post, requestUrl);
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-            request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-            return request;
+            // Khởi tạo request GET lên endpoint của AssemblyAI
+            var requestUrl = $"https://api.assemblyai.com/v2/transcript/{transcriptId}";
+
+            var assemblyAiResult = await HttpHelper.SendGetAsync<AssemblyAIResponseDto>(
+                  _httpClient,
+                  requestUrl,
+                  headers
+            ) ?? throw new BadRequestException("assemblyAiResult is null");
+
+            var speechToText = await _englishDBContext.AISpeechToText
+                .FirstOrDefaultAsync(s => s.AssemblyAIId == transcriptId)
+                ?? throw new BadRequestException($"AISpeechToText record with AssemblyAiId '{transcriptId}' was not found");
+
+            var words = assemblyAiResult.Words;
+            var audioDuration = assemblyAiResult.AudioDuration;
+
+            double wpm =  (words?.Count ?? 0) / ((audioDuration ?? 0) / 60.0);
+            
+            var fluencyScore = CalculateFluencyScore(words, audioDuration);
+
+            speechToText.AITranscript = assemblyAiResult.Text;
+            speechToText.FluencyScore = fluencyScore;
+            speechToText.OverallConfidence = assemblyAiResult.Confidence ?? 0.0;
+            speechToText.WordPerMinute = (int)Math.Round(wpm);
+            speechToText.WordsJson = JsonSerializer.Serialize(assemblyAiResult.Words);
+
+            await _englishDBContext.SaveChangesAsync();
         }
 
-        // Generic Method: khi gọi phải truyền 1 kiểu cụ thể vào <>
-        // method này trả về  về một Task bất đồng bộ, khi hoàn thành nó sẽ sinh ra một đối tượng DeepSeekResult<T>
-        // có kiểu dữ liệu tương ứng với kiểu T mà ta đã truyền vào khi gọi hàm.
-        public async Task<DeepSeekResult<T>> CallApiAsync<T>(string systemPrompt, string userPrompt, Guid userId)
+
+        public async Task<string> SubmitAudioAssemblyAI(AssemblyAIRequestDto requestDto)
         {
-            using HttpRequestMessage request = PrepareCallApi(systemPrompt, userPrompt, userId);
 
-            var response = await _httpClient.SendAsync(request);
-            var content = await response.Content.ReadAsStringAsync();
+            var headers = new Dictionary<string, string> { { "Authorization", _apiKey } };
 
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new BadRequestException($"DeepSeek API request failed with status code {response.StatusCode}: {content}");
-            }
+            // Khởi tạo request GET lên endpoint của AssemblyAI
+            var requestUrl = "https://api.assemblyai.com/v2/transcript";
 
-            var result = JsonSerializer.Deserialize<DeepSeekResponseDto>(content);
-            var messageContent = result?.Choices?.FirstOrDefault()?.Message?.Content;
-            var usage = result?.Usage;
+            requestDto.WebhookAuthHeaderName = "X-Webhook-Secret";
+            requestDto.WebhookAuthHeaderValue = _webhookAuth;
+            // sau này thay ngrok bằng domain
+            requestDto.WebhookUrl = "https://d7792j24-7025.asse.devtunnels.ms/api/assembly/webhook";
 
-            if (string.IsNullOrEmpty(messageContent))
-            {
-                throw new InvalidOperationException("DeepSeek returned an empty message content.");
-            }
+            var assemblyAiResult = await HttpHelper.SendPostJsonAsync<AssemblyAIRequestDto,AssemblyAIResponseDto>(
+                 _httpClient,
+                 requestUrl,
+                 requestDto,
+                 headers
+            );
 
-            // Cấu hình Deserialize không phân biệt chữ hoa chữ thường để khớp trường từ JSON của AI trả về
-            var jsonOptions = new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            };
+            // Trả về Transcript ID ngay lập tức
+            return assemblyAiResult.Id;
+        }
 
-            // Ép kiểu chuỗi JSON thô thu được từ DeepSeek sang định dạng Object kiểu T
-            T? data = JsonSerializer.Deserialize<T>(messageContent, jsonOptions);
-
-            return new DeepSeekResult<T>
-            {
-                Data = data,
-                Usage = usage
-            };
+        public async Task<AssemblyAIResponseDto> CallAPIDeepSeek(string transcriptId)
+        {
+            return null;
 
         }
 
-        public async Task<ReceiveDataFromDeepseekDto> CallDeepSeekApi(TranscriptRequestDto deepSeekRequest)
+        public double CalculateFluencyScore(List<AssemblyAIWordDto>? words, double? audioDuration)
         {
-            string systemPrompt = SystemPrompt.systemPromptGeneric;
-            string userPrompt = deepSeekRequest.userPrompt;
-
-            var user = await _userContextService.GetUserDetail();
-            var userId = user?.UserId ?? throw new BadRequestException("UserId not found"); ;
-
-            string systemPromptGramma = $"{systemPrompt}\n{SystemPrompt.systemPromptGrammar}";
-            string systemPromptVocab = $"{systemPrompt}\n{SystemPrompt.systemPromptVocab}";
-
-            var grammarTask = CallApiAsync<GrammarAnalysisResponse>(systemPromptGramma, userPrompt, userId);
-            var vocabTask = CallApiAsync<VocabularyAnalysisResponse>(systemPromptVocab, userPrompt, userId);
-
-            // Khai báo trước các Task tùy chọn (cho chế độ FULL) ở phạm vi ngoài if
-            Task<DeepSeekResult<RephrasedResponsesResponse>>? rephraseTask = null;
-            Task<DeepSeekResult<ToeicEvaluationResponse>>? evaluationTask = null;
-
-            // Khởi tạo danh sách các Task cần đợi
-            var tasksToAwait = new List<Task> { grammarTask, vocabTask };
-
-            // 3. Nếu là chế độ FULL, kích hoạt thêm các Task bổ sung và đưa vào danh sách chờ
-            bool isFull = deepSeekRequest.type == "FULL";
-            if (isFull)
+            // Điều kiện bảo vệ: Nếu bài nói quá ngắn hoặc rỗng, trả về điểm tối thiểu
+            if (words == null || words.Count < 3 || audioDuration <= 0)
             {
-                string systemPromptRephrase = $"{systemPrompt}\n{SystemPrompt.systemPromptRephrasing}";
-                string systemPromptFeedback = $"{systemPrompt}\n{SystemPrompt.systemPromptDetailed}";
+                return 10.0; // Điểm sàn tối thiểu
+            }
+            // 1. TÍNH TỐC ĐỘ NÓI (WPM)
+            double durationInMinutes = (audioDuration ?? 0) / 60.0;
+            double wpm = words.Count / durationInMinutes;
 
-                rephraseTask = CallApiAsync<RephrasedResponsesResponse>(systemPromptRephrase, userPrompt, userId);
-                evaluationTask = CallApiAsync<ToeicEvaluationResponse>(systemPromptFeedback, userPrompt, userId);
-
-                tasksToAwait.Add(rephraseTask);
-                tasksToAwait.Add(evaluationTask);
+            double baseScore = 100.0;
+            if (wpm < 110.0)
+            {
+                // Phạt nếu nói quá chậm (mỗi WPM thiếu so với mốc 110 trừ 0.6 điểm)
+                baseScore = 100.0 - ((110.0 - wpm) * 0.6);
+            }
+            else if (wpm > 150.0)
+            {
+                // Phạt nhẹ nếu nói quá nhanh (mỗi WPM thừa so với mốc 150 trừ 0.4 điểm)
+                baseScore = 100.0 - ((wpm - 150.0) * 0.4);
             }
 
-            await Task.WhenAll(tasksToAwait);
+            // Đảm bảo điểm nền không bị âm
+            baseScore = Math.Max(40.0, baseScore);
 
-            // Lấy kết quả từ các task
-            var grammarResult = grammarTask.Result;
-            var vocabResult = vocabTask.Result;
-            var rephraseResult = isFull ? rephraseTask?.Result : null;
-            var feedbackResult = isFull ? evaluationTask?.Result : null;
 
-            var mergedResultDto = new ReceiveDataFromDeepseekDto
+            // 2. PHÂN TÍCH KHOẢNG LẶNG NGẬP NGỪNG (PAUSES)
+            double totalDeduction = 0.0;
+
+            for (int i = 0; i < words.Count - 1; i++)
             {
-                GrammarAnalysis = grammarResult.Data?.GrammarAnalysis,
-                VocabularyAnalysis = vocabResult.Data?.VocabularyAnalysis,
-                RephrasedResponses = rephraseResult?.Data?.RephrasedResponses,
-                ToeicEvaluation = feedbackResult?.Data?.ToeicEvaluation
-            };
+                var currentWord = words[i];
+                var nextWord = words[i + 1];
 
-            // 5. GOM NHÓM VÀ CỘNG DỒN TOKEN USAGE
-            // Thu thập các đối tượng Usage không bị null từ các task đã chạy
-            var usages = new List<DeepSeekUsageDto>();
-            if (grammarResult?.Usage != null) usages.Add(grammarResult.Usage);
-            if (vocabResult?.Usage != null) usages.Add(vocabResult.Usage);
-            if (rephraseResult?.Usage != null) usages.Add(rephraseResult.Usage);
-            if (feedbackResult?.Usage != null) usages.Add(feedbackResult.Usage);
+                // Khoảng lặng tính bằng giây (start và end từ AssemblyAI là miliseconds)
+                double gapInSeconds = (nextWord.Start - currentWord.End) / 1000.0;
 
-            // Tính toán cộng dồn
-            int totalTokens = usages.Sum(u => u.TotalTokens);
-            int promptTokens = usages.Sum(u => u.PromptTokens);
-            int cacheMissTokens = usages.Sum(u => u.PromptCacheMissTokens);
-            int cacheHitTokens = usages.Sum(u => u.PromptCacheHitTokens);
-            int completionTokens = usages.Sum(u => u.CompletionTokens);
-            int reasoningTokens = usages.Sum(u => u.CompletionTokensDetails?.ReasoningTokens ?? 0);
+                // Kiểm tra xem từ hiện tại có kết thúc bằng dấu câu (.,?!) không
+                string cleanedText = currentWord.Text.Trim();
+                bool isNaturalPause = cleanedText.EndsWith(".") ||
+                                      cleanedText.EndsWith(",") ||
+                                      cleanedText.EndsWith("?") ||
+                                      cleanedText.EndsWith("!");
 
-
-            // 6. THỰC THI TRANSACTION LƯU DATABASE
-            using var transaction = await _englishDBContext.Database.BeginTransactionAsync();
-            try
-            {
-                // Khởi tạo bản ghi TokenUsage tổng
-                TokenUsage tokenUsage = new TokenUsage
+                if (isNaturalPause)
                 {
-                    AIModelTextId = 1, // Model ID của bạn
-                    UserId = userId,
-                    TotalTokens = totalTokens,
-                    PromptTokens = promptTokens,
-                    CacheMissTokens = cacheMissTokens,
-                    CacheHitTokens = cacheHitTokens,
-                    CompletionTokens = completionTokens,
-                    ReasoningTokens = reasoningTokens,
-
-                    // Tính tổng chi phí dựa trên tổng token đã gom nhóm
-                    CalculatedCost = ((decimal)0.14 * cacheMissTokens +
-                                      (decimal)0.0028 * cacheHitTokens +
-                                      (decimal)0.28 * completionTokens) / 1000000
-                };
-
-                _englishDBContext.TokenUsage.Add(tokenUsage);
-
-                var jsonOptions = new JsonSerializerOptions
+                    // Khoảng ngắt nghỉ tự nhiên: Chỉ trừ điểm nếu im lặng quá lâu (trên 1.8 giây)
+                    if (gapInSeconds > 1.8)
+                    {
+                        totalDeduction += 3.0; // Trừ nhẹ 3 điểm vì ngắt câu quá lâu
+                    }
+                }
+                else
                 {
-                    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-                    WriteIndented = false // Để false để nén chuỗi gọn nhất có thể giúp tiết kiệm dung lượng DB
-                };
-
-                // Chuỗi JSON tổng sau khi gộp để lưu vào AiAnalysis
-                // khi lấy ra trả cho user nhớ De
-                string mergedJsonContent = JsonSerializer.Serialize(mergedResultDto, jsonOptions);
-
-                AIAnalysis aiAnalysis = new()
-                {
-                    UserId = userId,
-                    TokenUsage = tokenUsage,
-                    UserTranscript = userPrompt, // Transcript gốc của user
-                    AnalysisContentJson = mergedJsonContent ?? "AI not response"
-                };
-
-                _englishDBContext.AIAnalysis.Add(aiAnalysis);
-
-                await _englishDBContext.SaveChangesAsync();
-                await transaction.CommitAsync();
+                    // Khoảng lặng ngập ngừng giữa câu (Bí từ, quên ý)
+                    if (gapInSeconds > 1.2)
+                    {
+                        totalDeduction += 6.0; // Ngập ngừng nặng: Trừ 6 điểm
+                    }
+                    else if (gapInSeconds > 0.8)
+                    {
+                        totalDeduction += 3.0; // Ngập ngừng nhẹ: Trừ 3 điểm
+                    }
+                }
             }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw new BadRequestException("error function CallDeepSeekApi");
-            }
-            return mergedResultDto;
+
+            // 3. TỔNG HỢP ĐIỂM SỐ CUỐI CÙNG
+            double finalScore = baseScore - totalDeduction;
+
+            // Giới hạn điểm số nằm trong thang điểm từ 10 đến 100
+            finalScore = Math.Clamp(finalScore, 10.0, 100.0);
+
+            return Math.Round(finalScore, 1);
         }
     }
 }

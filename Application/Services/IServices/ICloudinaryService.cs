@@ -6,6 +6,6 @@ namespace English.Website.Application.Services.IServices
 
     public interface ICloudinaryService
     {
-        Task<UploadResponseDto> UploadFileAsync(UploadRequestDto requestDto);
+        Task<string?> UploadFileAsync(UploadRequestDto requestDto);
     }
 }

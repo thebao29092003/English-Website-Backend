@@ -188,7 +188,7 @@ namespace English.Website.Application.Services
             userNew.CreatedAt = DateTime.UtcNow;
             userNew.LastLoginAt = null; // Tài khoản mới tinh chưa đăng nhập lần nào
 
-            _context.User.Add(userNew);
+            await _context.User.AddAsync(userNew);
             await _context.SaveChangesAsync();
 
             // 4. Xóa mã OTP khỏi RAM sau khi đăng ký thành công

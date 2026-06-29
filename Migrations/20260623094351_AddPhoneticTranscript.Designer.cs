@@ -4,6 +4,7 @@ using English.Website.Domain.DatabaseContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace English.Website.Migrations
 {
     [DbContext(typeof(EnglishDBContext))]
-    partial class EnglishDBContextModelSnapshot : ModelSnapshot
+    [Migration("20260623094351_AddPhoneticTranscript")]
+    partial class AddPhoneticTranscript
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -214,24 +217,26 @@ namespace English.Website.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("AITranscript")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("AssemblyAIId")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<double?>("FluencyScore")
+                    b.Property<double>("FluencyScore")
                         .HasColumnType("float");
 
-                    b.Property<double?>("OverallConfidence")
+                    b.Property<double>("OverallConfidence")
                         .HasColumnType("float");
 
                     b.Property<string>("PhoneticTranscript")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<double?>("PronunciationScore")
+                    b.Property<double>("PronunciationScore")
                         .HasColumnType("float");
 
                     b.Property<Guid>("RecordingId")
@@ -240,13 +245,8 @@ namespace English.Website.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<int?>("WordPerMinute")
-                        .HasColumnType("int");
-
                     b.Property<string>("WordsJson")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("WordsPronunciationScore")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("AISpeechToTextId");

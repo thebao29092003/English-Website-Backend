@@ -1,4 +1,6 @@
-﻿using English.Website.Api.Dtos.AIDtos.DeepSeekDto;
+﻿using English.Website.Api.Dtos.AIDtos.AssemblyAIDto;
+using English.Website.Api.Dtos.AIDtos.AzureSpeechDto;
+using English.Website.Api.Dtos.AIDtos.DeepSeekDto;
 
 namespace English.Website.Application.Services.IServices
 {
@@ -6,12 +8,13 @@ namespace English.Website.Application.Services.IServices
     public interface IAssemblyAIService
     {
 
-        /// <summary>
-        /// Gọi API DeepSeek với cấu trúc JSON Object và tự động ép kiểu kết quả trả về dạng T.
-        /// </summary>
-        /// <typeparam name="T">Kiểu dữ liệu mong muốn nhận về (đã lọc theo Schema)</typeparam>
-        Task<DeepSeekResult<T>> CallApiAsync<T>(string systemPrompt, string userPrompt, Guid userId);
-        Task<ReceiveDataFromDeepseekDto> CallDeepSeekApi(TranscriptRequestDto deepSeekRequest);
+        Task<string> SubmitAudioAssemblyAI(AssemblyAIRequestDto requestDto);
+
+        Task GetDataAssemblyAI(string transcriptId);
+
+        Task<AssemblyAIResponseDto> CallAPIDeepSeek(string transcriptId);
+
+        double CalculateFluencyScore(List<AssemblyAIWordDto> words, double? audioDuration);
 
     }
 }
