@@ -54,13 +54,13 @@ namespace English.Website.Api.Extensions.Helpers
 
             if (!response.IsSuccessStatusCode)
             {
-                throw new HttpRequestException($"GET API request failed with status code {response.StatusCode} on URL {url}. Content: {content}");
+                throw new BadRequestException($"GET API request failed with status code {response.StatusCode} on URL {url}. Content: {content}");
             }
 
             var result = JsonSerializer.Deserialize<TResponse>(content, DefaultJsonOptions);
             if (result == null)
             {
-                throw new InvalidOperationException($"Failed to deserialize GET API response from {url}.");
+                throw new BadRequestException($"Failed to deserialize GET API response from {url}.");
             }
 
             return result;
@@ -85,15 +85,17 @@ namespace English.Website.Api.Extensions.Helpers
             var response = await httpClient.SendAsync(request);
             var content = await response.Content.ReadAsStringAsync();
 
+            Console.WriteLine("content: ", content);
+
             if (!response.IsSuccessStatusCode)
             {
-                throw new HttpRequestException($"POST API request failed with status code {response.StatusCode} on URL {url}. Content: {content}");
+                throw new BadRequestException($"POST API request failed with status code {response.StatusCode} on URL {url}. Content: {content}");
             }
 
             var result = JsonSerializer.Deserialize<TResponse>(content, DefaultJsonOptions);
             if (result == null)
             {
-                throw new InvalidOperationException($"Failed to deserialize POST API response from {url}.");
+                throw new BadRequestException($"Failed to deserialize POST API response from {url}.");
             }
 
             return result;

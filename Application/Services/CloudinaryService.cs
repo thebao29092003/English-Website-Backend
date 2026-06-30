@@ -35,6 +35,7 @@ namespace English.Website.Application.Services
 
         public async Task<string?> UploadFileAsync(UploadRequestDto requestDto)
         {
+            #region upload file
             const long MaxFileSize = 5 * 1024 * 1024; // 5 MB
 
             var user = await _userContextService.GetUserDetail();
@@ -73,7 +74,7 @@ namespace English.Website.Application.Services
             };
 
             var uploadResult = await _cloudinary.UploadAsync(uploadParams);
-
+            #endregion
 
             if (uploadResult.Error != null)
             {
@@ -109,7 +110,8 @@ namespace English.Website.Application.Services
             {
                 AudioPath  = secureUrl,
                 RecordingId = recordingId,
-                CallbackUrl = "https://localhost:7025/api/backend-python/phonetic-webhook"
+                CallbackUrl = "https://localhost:7025/api/backend-python/phonetic-webhook",
+                TranscriptId = transcriptId
             });
 
 

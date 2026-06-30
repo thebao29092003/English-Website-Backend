@@ -86,7 +86,7 @@ namespace English.Website.Application.Services
                 issuer: _configuration.GetValue<string>("AppSettings:Issuer"),
                 audience: _configuration.GetValue<string>("AppSettings:Audience"),
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(15),
+                expires: DateTime.UtcNow.AddHours(2),
                 signingCredentials: creds
             );
 
@@ -95,7 +95,6 @@ namespace English.Website.Application.Services
 
         private async Task<User> ValidateRefreshToken(string refreshToken)
         {
-
             var user = await _context.User.FirstOrDefaultAsync(u => u.RefreshToken == refreshToken);
             if (user == null ||
                 user.RefreshTokenExpiryTime <= DateTime.UtcNow

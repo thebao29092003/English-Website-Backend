@@ -95,7 +95,7 @@ namespace English.Website.Domain.Cores.Exceptions
             return true; // Trả về true để báo hiệu .NET đã xử lý xong lỗi này [6]
         }
 
-        private async Task SendErrorEmailToAdminAsync(Exception exception, HttpContext context)
+        private async Task SendErrorEmailToAdminAsync(Exception exception, HttpContext? context)
         {
             var adminEmail = _configuration["AdminSettings:Email"]; // Đọc email nhận của bạn từ cấu hình
 
@@ -109,7 +109,7 @@ namespace English.Website.Domain.Cores.Exceptions
                 <div style='font-family: Arial, sans-serif; line-height: 1.6;'>
                     <h2 style='color: red;'>Phát hiện lỗi sập nguồn hệ thống (HTTP 500)</h2>
                     <p><strong>Thời gian xảy ra (UTC):</strong> {DateTime.UtcNow:dd/MM/yyyy HH:mm:ss}</p>
-                    <p><strong>API Endpoint bị lỗi:</strong> <span style='background: #eee; padding: 2px 5px;'>{context.Request.Method} {context.Request.Path}</span></p>
+                    <p><strong>API Endpoint bị lỗi:</strong> <span style='background: #eee; padding: 2px 5px;'>{context?.Request.Method} {context?.Request.Path}</span></p>
                     <p><strong>Nội dung lỗi:</strong> <span style='color: red; font-weight: bold;'>{exception.Message}</span></p>
                     <hr/>
                     <p><strong>Chi tiết Stack Trace (Dòng code bị lỗi):</strong></p>

@@ -13,20 +13,29 @@ namespace English.Website.Application.Services
     {
         private readonly EnglishDBContext _dbContext;
         private readonly IBackendPythonService _backendPythonService;
+        private readonly IAssemblyAIService _assemblyAIService;
 
-        public AISpeechToTextService(EnglishDBContext dBContext, IBackendPythonService backendPythonService)
+        public AISpeechToTextService(
+            EnglishDBContext dBContext,
+            IBackendPythonService backendPythonService,
+            IAssemblyAIService assemblyAIService
+        )
         {
             _dbContext = dBContext;
             _backendPythonService = backendPythonService;
+            _assemblyAIService = assemblyAIService;
         }
 
         public async Task Update(PythonPhonemeWebhookDto webhookData)
         {
-            var result = _dbContext.AISpeechToText.FirstOrDefault(s => s.RecordingId == Guid.Parse(webhookData.RecordingId))
+            // cần xem xét viết hàm riêng bên asseblyAIService để call apiGetData để lấy ra wordsList chứ 
+            // lấy lên từ database sẽ bị trường hợp bên webhook kia chưa kịp lưu vào database
+            var assemblyAiResult = await _assemblyAIService.CallAPIGetDataAssemblyAI(webhookData.TranscriptId);
+
+            var result =  _dbContext.AISpeechToText.FirstOrDefault(s => s.RecordingId == Guid.Parse(webhookData.RecordingId))
                 ?? throw new BadRequestException("Not found AISpeechToText by RecordingId");
 
-            var wordsList = JsonSerializer.Deserialize<List<AssemblyAIWordDto>>(result.WordsJson!)
-                    ?? throw new BadRequestException("Not found wordsList");
+            var wordsList = (assemblyAiResult.Words) ?? throw new BadRequestException("Not found wordsList");
 
             var wordListOnlyText = wordsList
                .Select(w => w.Text)

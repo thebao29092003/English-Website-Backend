@@ -29,7 +29,7 @@ namespace English.Website.Api.Controllers
             _aiSpeechToTextService = aiSpeechToTextService;
         }
 
-        // Này là endpoint trả về cho AssemblyAI nên nó khác những endpoint kia
+        // những webhook không được gọi _useUserContextService để lấy userId vì nó ko có token của user
         [HttpPost("phonetic-webhook")]
         public async Task<IActionResult> PythonPhoneticWebhook([FromBody] PythonPhonemeWebhookDto webhookData)
         {

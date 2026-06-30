@@ -1,8 +1,10 @@
-﻿using English.Website.Api.Dtos.AIDtos.AssemblyAIDto;
+﻿using CloudinaryDotNet.Actions;
+using English.Website.Api.Dtos.AIDtos.AssemblyAIDto;
 using English.Website.Api.Dtos.AIDtos.AzureSpeechDto;
 using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services.IServices;
 using English.Website.Domain.DatabaseContext;
+using English.Website.Domain.Entities.AI.AIModelAudio;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
@@ -14,20 +16,54 @@ namespace English.Website.Application.Services
         private readonly string _webhookAuth;
         private readonly EnglishDBContext _englishDBContext;
         private readonly HttpClient _httpClient;
+        private readonly IUserContextService _useUserContextService;
 
         public AssemblyAIService(
             IConfiguration configuration,
             HttpClient httpClient,
-            EnglishDBContext englishDBContext
+            EnglishDBContext englishDBContext,
+            IUserContextService userContextService
         )
         {
             _httpClient = httpClient;
             _apiKey = configuration["AI:AssemblyAIKey"]!;
             _webhookAuth = configuration["AI:AssemblyAIKey"]!;
             _englishDBContext = englishDBContext;
+            _useUserContextService = userContextService;
         }
 
         public async Task GetDataAssemblyAI(string transcriptId)
+        {
+            AssemblyAIResponseDto assemblyAiResult = await CallAPIGetDataAssemblyAI(transcriptId);
+
+            var speechToText = await _englishDBContext.AISpeechToText
+                .FirstOrDefaultAsync(s => s.AssemblyAIId == transcriptId)
+                ?? throw new BadRequestException($"AISpeechToText record with AssemblyAiId '{transcriptId}' was not found");
+
+            var words = assemblyAiResult.Words;
+            var audioDuration = assemblyAiResult.AudioDuration;
+
+            double wpm = (words?.Count ?? 0) / ((audioDuration ?? 0) / 60.0);
+
+            var fluencyScore = CalculateFluencyScore(words, audioDuration);
+
+            speechToText.AITranscript = assemblyAiResult.Text;
+            speechToText.FluencyScore = fluencyScore; 
+            speechToText.OverallConfidence = assemblyAiResult.Confidence ?? 0.0;
+            speechToText.WordPerMinute = (int)Math.Round(wpm);
+            speechToText.WordsJson = JsonSerializer.Serialize(words);
+
+            speechToText.AudioUsage = new AudioUsage
+            {
+                UserId = speechToText.UserId,
+                AIModelAudioId = 1,
+                CalculatedCost = (0.15m / 3600m) * (decimal)(audioDuration ?? 0)
+            };
+
+            await _englishDBContext.SaveChangesAsync();
+        }
+
+        public async Task<AssemblyAIResponseDto> CallAPIGetDataAssemblyAI(string transcriptId)
         {
             var headers = new Dictionary<string, string> { { "Authorization", _apiKey } };
 
@@ -39,27 +75,8 @@ namespace English.Website.Application.Services
                   requestUrl,
                   headers
             ) ?? throw new BadRequestException("assemblyAiResult is null");
-
-            var speechToText = await _englishDBContext.AISpeechToText
-                .FirstOrDefaultAsync(s => s.AssemblyAIId == transcriptId)
-                ?? throw new BadRequestException($"AISpeechToText record with AssemblyAiId '{transcriptId}' was not found");
-
-            var words = assemblyAiResult.Words;
-            var audioDuration = assemblyAiResult.AudioDuration;
-
-            double wpm =  (words?.Count ?? 0) / ((audioDuration ?? 0) / 60.0);
-            
-            var fluencyScore = CalculateFluencyScore(words, audioDuration);
-
-            speechToText.AITranscript = assemblyAiResult.Text;
-            speechToText.FluencyScore = fluencyScore;
-            speechToText.OverallConfidence = assemblyAiResult.Confidence ?? 0.0;
-            speechToText.WordPerMinute = (int)Math.Round(wpm);
-            speechToText.WordsJson = JsonSerializer.Serialize(assemblyAiResult.Words);
-
-            await _englishDBContext.SaveChangesAsync();
+            return assemblyAiResult;
         }
-
 
         public async Task<string> SubmitAudioAssemblyAI(AssemblyAIRequestDto requestDto)
         {
@@ -74,7 +91,7 @@ namespace English.Website.Application.Services
             // sau này thay ngrok bằng domain
             requestDto.WebhookUrl = "https://d7792j24-7025.asse.devtunnels.ms/api/assembly/webhook";
 
-            var assemblyAiResult = await HttpHelper.SendPostJsonAsync<AssemblyAIRequestDto,AssemblyAIResponseDto>(
+            var assemblyAiResult = await HttpHelper.SendPostJsonAsync<AssemblyAIRequestDto, AssemblyAIResponseDto>(
                  _httpClient,
                  requestUrl,
                  requestDto,
