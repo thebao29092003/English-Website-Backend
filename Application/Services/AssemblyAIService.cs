@@ -3,8 +3,10 @@ using English.Website.Api.Dtos.AIDtos.AssemblyAIDto;
 using English.Website.Api.Dtos.AIDtos.AzureSpeechDto;
 using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services.IServices;
+using English.Website.Domain.Constants;
 using English.Website.Domain.DatabaseContext;
 using English.Website.Domain.Entities.AI.AIModelAudio;
+using English.Website.Api.Dtos.AIDtos.DeepSeekDto; 
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
@@ -16,20 +18,20 @@ namespace English.Website.Application.Services
         private readonly string _webhookAuth;
         private readonly EnglishDBContext _englishDBContext;
         private readonly HttpClient _httpClient;
-        private readonly IUserContextService _useUserContextService;
+        private readonly IDeepSeekService _deepSeekService;
 
         public AssemblyAIService(
             IConfiguration configuration,
             HttpClient httpClient,
             EnglishDBContext englishDBContext,
-            IUserContextService userContextService
+            IDeepSeekService deepSeekService
         )
         {
             _httpClient = httpClient;
             _apiKey = configuration["AI:AssemblyAIKey"]!;
             _webhookAuth = configuration["AI:AssemblyAIKey"]!;
             _englishDBContext = englishDBContext;
-            _useUserContextService = userContextService;
+            _deepSeekService = deepSeekService;
         }
 
         public async Task GetDataAssemblyAI(string transcriptId)
@@ -42,12 +44,13 @@ namespace English.Website.Application.Services
 
             var words = assemblyAiResult.Words;
             var audioDuration = assemblyAiResult.AudioDuration;
+            var transcriptResult = assemblyAiResult.Text;
 
             double wpm = (words?.Count ?? 0) / ((audioDuration ?? 0) / 60.0);
 
             var fluencyScore = CalculateFluencyScore(words, audioDuration);
 
-            speechToText.AITranscript = assemblyAiResult.Text;
+            speechToText.AITranscript = transcriptResult;
             speechToText.FluencyScore = fluencyScore; 
             speechToText.OverallConfidence = assemblyAiResult.Confidence ?? 0.0;
             speechToText.WordPerMinute = (int)Math.Round(wpm);
@@ -61,6 +64,18 @@ namespace English.Website.Application.Services
             };
 
             await _englishDBContext.SaveChangesAsync();
+
+            if (speechToText.TypeAnalyse != TypeAnalyse.NOT && transcriptResult != null)
+            {
+                var result = await _deepSeekService.CallDeepSeekApi(new TranscriptRequestDto
+                {
+                    Type = speechToText.TypeAnalyse,
+                    UserPrompt = transcriptResult,
+                    AISpeechToTextId = speechToText.AISpeechToTextId,
+                    UserId = speechToText.UserId,
+                });
+            } 
+            
         }
 
         public async Task<AssemblyAIResponseDto> CallAPIGetDataAssemblyAI(string transcriptId)

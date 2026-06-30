@@ -2,6 +2,7 @@
 using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Extend;
 using English.Website.Application.Services.IServices;
+using English.Website.Domain.Constants;
 using English.Website.Domain.DatabaseContext;
 using English.Website.Domain.Entities.AI.AIModelText;
 using System.Net.Http.Headers;
@@ -101,10 +102,9 @@ namespace English.Website.Application.Services
         public async Task<ReceiveDataFromDeepseekDto> CallDeepSeekApi(TranscriptRequestDto deepSeekRequest)
         {
             string systemPrompt = SystemPrompt.systemPromptGeneric;
-            string userPrompt = deepSeekRequest.userPrompt;
-
-            var user = await _userContextService.GetUserDetail();
-            var userId = user?.UserId ?? throw new BadRequestException("UserId not found"); ;
+            string userPrompt = deepSeekRequest.UserPrompt;
+            Guid userId = deepSeekRequest.UserId;
+            Guid aiSpeechToTextId = deepSeekRequest.AISpeechToTextId;
 
             string systemPromptGramma = $"{systemPrompt}\n{SystemPrompt.systemPromptGrammar}";
             string systemPromptVocab = $"{systemPrompt}\n{SystemPrompt.systemPromptVocab}";
@@ -120,7 +120,7 @@ namespace English.Website.Application.Services
             var tasksToAwait = new List<Task> { grammarTask, vocabTask };
 
             // 3. Nếu là chế độ FULL, kích hoạt thêm các Task bổ sung và đưa vào danh sách chờ
-            bool isFull = deepSeekRequest.type == "FULL";
+            bool isFull = deepSeekRequest.Type == TypeAnalyse.FULL;
             if (isFull)
             {
                 string systemPromptRephrase = $"{systemPrompt}\n{SystemPrompt.systemPromptRephrasing}";
@@ -205,7 +205,8 @@ namespace English.Website.Application.Services
                     UserId = userId,
                     TokenUsage = tokenUsage,
                     UserTranscript = userPrompt, // Transcript gốc của user
-                    AnalysisContentJson = mergedJsonContent ?? "AI not response"
+                    AnalysisContentJson = mergedJsonContent ?? "AI not response",
+                    AISpeechToTextId = aiSpeechToTextId
                 };
 
                 await _englishDBContext.AIAnalysis.AddAsync(aiAnalysis);

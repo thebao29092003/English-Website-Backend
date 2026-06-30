@@ -35,7 +35,6 @@
     <Folder Include="Api\Dtos\AIDtos\BackendPythonDto\" />
     <Folder Include="Api\Extensions\AIOutputText\" />
     <Folder Include="Application\Dtos\" />
-    <Folder Include="Domain\Constants\" />
     <Folder Include="Domain\Cores\BaseModel\" />
     <Folder Include="Domain\DatabaseContext\" />
   </ItemGroup>

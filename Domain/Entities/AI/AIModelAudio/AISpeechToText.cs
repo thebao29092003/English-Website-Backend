@@ -1,4 +1,5 @@
-﻿using English.Website.Domain.Entities.AI.AIModelAudio;
+﻿using English.Website.Domain.Constants;
+using English.Website.Domain.Entities.AI.AIModelAudio;
 using English.Website.Domain.Entities.AI.AIModelText;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -30,6 +31,8 @@ namespace English.Website.Domain.Entities.AI
         public string? PhoneticTranscript { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public TypeAnalyse TypeAnalyse { get; set; } = TypeAnalyse.NOT;
 
         [ForeignKey(nameof(RecordingId))]
         public Recording Recording { get; set; } = null!; // Điều hướng trỏ về file ghi âm gốc

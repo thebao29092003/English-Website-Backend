@@ -102,7 +102,8 @@ namespace English.Website.Application.Services
             {
                 RecordingId = recordingId,
                 UserId = user.UserId,
-                AssemblyAIId = transcriptId
+                AssemblyAIId = transcriptId,
+                TypeAnalyse = requestDto.TypeAnalyse
             });
 
             // gọi api wav2vec2 python param RecordingId
