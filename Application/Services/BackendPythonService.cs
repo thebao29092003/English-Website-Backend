@@ -7,17 +7,20 @@ namespace English.Website.Application.Services
     public class BackendPythonService : IBackendPythonService
     {
         private readonly HttpClient _httpClient;
+        private readonly string _baseUrlPython;
 
         public BackendPythonService(
-            HttpClient httpClient
+            HttpClient httpClient,
+            IConfiguration configuration
         )
         {
+            _baseUrlPython = configuration["BackendPython:BaseUrl"]!;
             _httpClient = httpClient;
         }
 
         public async Task<PhoneticCompareResponseDto?> ComparePhonetic(PhoneticCompareRequestDto requestCompare)
         {
-            var requestUrl = "http://localhost:8000/api/v1/phonetic-matching/compare";
+            var requestUrl = $"{_baseUrlPython}/phonetic-matching/compare";
 
             return await HttpHelper.SendPostJsonAsync<PhoneticCompareRequestDto, PhoneticCompareResponseDto>(
                 _httpClient,
@@ -30,7 +33,7 @@ namespace English.Website.Application.Services
         // này chỉ trả về statusCode và messgase là processing đi
         public async Task ConvertAudioToPhonetic(RequestConvertAudioPhoneticDto requestConvert)
         {
-            var requestUrl = "http://localhost:8000/api/v1/convert-audio-phonetic/wav2vec2";
+            var requestUrl = $"{_baseUrlPython}/convert-audio-phonetic/wav2vec2";
 
             var submitResult = await HttpHelper.SendPostJsonAsync<RequestConvertAudioPhoneticDto, ResponseConvertAudioPhoneticDto>(
                _httpClient,

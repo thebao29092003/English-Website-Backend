@@ -206,7 +206,9 @@ namespace English.Website.Application.Services
                     TokenUsage = tokenUsage,
                     UserTranscript = userPrompt, // Transcript gốc của user
                     AnalysisContentJson = mergedJsonContent ?? "AI not response",
-                    AISpeechToTextId = aiSpeechToTextId
+                    AISpeechToTextId = aiSpeechToTextId,
+                    OverallGrammarScore = mergedResultDto.GrammarAnalysis?.OverallGrammarScore,
+                    OverallVocabScore = mergedResultDto.VocabularyAnalysis?.OverallVocabScore,
                 };
 
                 await _englishDBContext.AIAnalysis.AddAsync(aiAnalysis);

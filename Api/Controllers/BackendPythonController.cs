@@ -25,7 +25,7 @@ namespace English.Website.Api.Controllers
             AISpeechToTextService aiSpeechToTextService
         )
         {
-            _webhookAuth = configuration["BackendPython"]!;
+            _webhookAuth = configuration["WebHook:BackendPython:Token"]!;
             _aiSpeechToTextService = aiSpeechToTextService;
         }
 

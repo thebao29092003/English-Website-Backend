@@ -1,10 +1,7 @@
-﻿using Azure;
-using English.Website.Api.Dtos.AIDtos.AssemblyAIDto;
-using English.Website.Api.Dtos.BackendPythonDtos;
+﻿using English.Website.Api.Dtos.BackendPythonDtos;
 using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services.IServices;
 using English.Website.Domain.DatabaseContext;
-using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
 namespace English.Website.Application.Services

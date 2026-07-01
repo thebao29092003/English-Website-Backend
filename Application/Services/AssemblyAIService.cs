@@ -16,6 +16,7 @@ namespace English.Website.Application.Services
     {
         private readonly string _apiKey;
         private readonly string _webhookAuth;
+        private readonly string _webhookUrl;
         private readonly EnglishDBContext _englishDBContext;
         private readonly HttpClient _httpClient;
         private readonly IDeepSeekService _deepSeekService;
@@ -29,7 +30,8 @@ namespace English.Website.Application.Services
         {
             _httpClient = httpClient;
             _apiKey = configuration["AI:AssemblyAIKey"]!;
-            _webhookAuth = configuration["AI:AssemblyAIKey"]!;
+            _webhookAuth = configuration["WebHook:AssemblyAI:Token"]!;
+            _webhookUrl = configuration["WebHook:AssemblyAI:Url"]!;
             _englishDBContext = englishDBContext;
             _deepSeekService = deepSeekService;
         }
@@ -104,7 +106,7 @@ namespace English.Website.Application.Services
             requestDto.WebhookAuthHeaderName = "X-Webhook-Secret";
             requestDto.WebhookAuthHeaderValue = _webhookAuth;
             // sau này thay ngrok bằng domain
-            requestDto.WebhookUrl = "https://d7792j24-7025.asse.devtunnels.ms/api/assembly/webhook";
+            requestDto.WebhookUrl = _webhookUrl;
 
             var assemblyAiResult = await HttpHelper.SendPostJsonAsync<AssemblyAIRequestDto, AssemblyAIResponseDto>(
                  _httpClient,
@@ -117,12 +119,6 @@ namespace English.Website.Application.Services
             return assemblyAiResult.Id;
         }
 
-        public async Task<AssemblyAIResponseDto> CallAPIDeepSeek(string transcriptId)
-        {
-            return null;
-
-        }
-
         public double CalculateFluencyScore(List<AssemblyAIWordDto>? words, double? audioDuration)
         {
             // Điều kiện bảo vệ: Nếu bài nói quá ngắn hoặc rỗng, trả về điểm tối thiểu
@@ -130,12 +126,13 @@ namespace English.Website.Application.Services
             {
                 return 10.0; // Điểm sàn tối thiểu
             }
+
             // 1. TÍNH TỐC ĐỘ NÓI (WPM)
             double durationInMinutes = (audioDuration ?? 0) / 60.0;
             double wpm = words.Count / durationInMinutes;
 
             double baseScore = 100.0;
-            if (wpm < 110.0)
+            if (wpm < 120.0)
             {
                 // Phạt nếu nói quá chậm (mỗi WPM thiếu so với mốc 110 trừ 0.6 điểm)
                 baseScore = 100.0 - ((110.0 - wpm) * 0.6);

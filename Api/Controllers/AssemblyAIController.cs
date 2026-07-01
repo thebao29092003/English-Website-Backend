@@ -1,8 +1,6 @@
 ﻿using English.Website.Api.Dtos.AIDtos.AssemblyAIDto;
-using English.Website.Application.Services;
 using English.Website.Application.Services.IServices;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
 namespace English.Website.Api.Controllers
 {
@@ -13,20 +11,17 @@ namespace English.Website.Api.Controllers
     {
         private readonly string _webhookAuth;
         private readonly string _emailAdmin;
-        private readonly IAssemblyAIService _assemblyAIService;
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly IEmailService _emailService;
 
         public AssemblyAIController(
             IConfiguration configuration,
-            IAssemblyAIService assemblyAIService,
             IServiceScopeFactory serviceScopeFactory,
             IEmailService emailService
         )
         {
-            _webhookAuth = configuration["AI:AssemblyAIKey"]!;
+            _webhookAuth = configuration["WebHook:AssemblyAI:Token"]!;
             _emailAdmin = configuration["AdminSettings:Email"]!;
-            _assemblyAIService = assemblyAIService;
             _serviceScopeFactory = serviceScopeFactory;
             _emailService = emailService;
         }
@@ -39,13 +34,14 @@ namespace English.Website.Api.Controllers
             if (!Request.Headers.TryGetValue("X-Webhook-Secret", out var receivedSecret) ||
                 receivedSecret != _webhookAuth)
             {
-                return Unauthorized(new { message = "Unauthorized webhook request." });
+                return StatusCode(500);
             }
 
             if (webhookData.Status == "completed")
             {
                 try
                 {
+                    // _: thể hiện rằng không cần lấy kết quả trả về của nó
                     _ = Task.Run(async () =>
                         {
                             // Tạo một Scope mới độc lập với vòng đời của HTTP Request

@@ -18,12 +18,14 @@ namespace English.Website.Application.Services
         private readonly IUserContextService _userContextService;
         private readonly IAssemblyAIService _assemblyAIService;
         private readonly IBackendPythonService _backendPythonService;
+        private readonly string _webhookUrl;
 
         public CloudinaryService(
             Cloudinary cloudinary,
             EnglishDBContext dbContext,
             IAssemblyAIService assemblyAIService,
             IBackendPythonService backendPythonService,
+            IConfiguration configuration,
             IUserContextService userContextService)
         {
             _cloudinary = cloudinary;
@@ -31,6 +33,7 @@ namespace English.Website.Application.Services
             _userContextService = userContextService;
             _assemblyAIService = assemblyAIService;
             _backendPythonService = backendPythonService;
+            _webhookUrl = configuration["WebHook:BackendPython:Url"]!;
         }
 
         public async Task<string?> UploadFileAsync(UploadRequestDto requestDto)
@@ -111,7 +114,7 @@ namespace English.Website.Application.Services
             {
                 AudioPath  = secureUrl,
                 RecordingId = recordingId,
-                CallbackUrl = "https://localhost:7025/api/backend-python/phonetic-webhook",
+                CallbackUrl = _webhookUrl,
                 TranscriptId = transcriptId
             });
 
