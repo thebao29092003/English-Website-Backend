@@ -25,12 +25,11 @@ namespace English.Website.Api.Controllers
             await _authService.SendRegisterOtp(email);
             return Ok(new APIResponseBase
             {
-                isResponseResult = false,
-                success = true,
-                endPointCode = "auth.register.send-otp",
-                status = (int)HttpStatusCode.OK,
-                value = null,
-                message = "OTP sent successfully."
+                Success = true,
+                EndPointCode = "auth.register.send-otp",
+                Status = (int)HttpStatusCode.OK,
+                Value = null,
+                Message = "OTP sent successfully."
             });
         }
 
@@ -40,12 +39,11 @@ namespace English.Website.Api.Controllers
             await _authService.Register(registerDto);
             return Ok(new APIResponseBase
             {
-                isResponseResult = false,
-                success = true,
-                endPointCode = "auth.register",
-                status = (int)HttpStatusCode.Created,
-                value = null,
-                message = "Registration successful."
+                Success = true,
+                EndPointCode = "auth.register",
+                Status = (int)HttpStatusCode.Created,
+                Value = null,
+                Message = "Registration successful."
             });
         }
 
@@ -56,12 +54,11 @@ namespace English.Website.Api.Controllers
 
             return Ok(new APIResponseBase
             {
-                isResponseResult = true,
-                success = true,
-                endPointCode = "auth.login",
-                status = (int)HttpStatusCode.OK,
-                value = result.AccessToken,
-                message = "Get user successfull"
+                Success = true,
+                EndPointCode = "auth.login",
+                Status = (int)HttpStatusCode.OK,
+                Value = result.AccessToken,
+                Message = "Get user successfull"
             });
         }
 
@@ -71,12 +68,11 @@ namespace English.Website.Api.Controllers
             var result = await _authService.RefreshToken();
             return Ok(new APIResponseBase
             {
-                isResponseResult = true,
-                success = true,
-                endPointCode = "auth.refreshToken",
-                status = (int)HttpStatusCode.OK,
-                value = result.AccessToken,
-                message = "Get refresh token successfull"
+                Success = true,
+                EndPointCode = "auth.refreshToken",
+                Status = (int)HttpStatusCode.OK,
+                Value = result.AccessToken,
+                Message = "Get refresh token successfull"
             });
         }
 
@@ -88,12 +84,11 @@ namespace English.Website.Api.Controllers
 
             return Ok(new APIResponseBase
             {
-                isResponseResult = false,
-                success = true,
-                endPointCode = "auth.logout",
-                status = (int)HttpStatusCode.OK,
-                value = null,
-                message = "Logout successful."
+                Success = true,
+                EndPointCode = "auth.logout",
+                Status = (int)HttpStatusCode.OK,
+                Value = null,
+                Message = "Logout successful."
             });
         }
 
@@ -103,12 +98,11 @@ namespace English.Website.Api.Controllers
         {
             return Ok(new APIResponseBase
             {
-                isResponseResult = false,
-                success = true,
-                endPointCode = "auth.allApiGet",
-                status = (int)HttpStatusCode.OK,
-                value = null,
-                message = "You are authorized to access this endpoint."
+                Success = true,
+                EndPointCode = "auth.allApiGet",
+                Status = (int)HttpStatusCode.OK,
+                Value = null,
+                Message = "You are authorized to access this endpoint."
             });
         }
 
@@ -119,12 +113,11 @@ namespace English.Website.Api.Controllers
             await _authService.UpdateUserStatusAsync(userId);
             return Ok(new APIResponseBase
             {
-                isResponseResult = false,
-                success = true,
-                endPointCode = "auth.changeIsActive",
-                status = (int)HttpStatusCode.OK,
-                value = null,
-                message = "Update status is active successfully"
+                Success = true,
+                EndPointCode = "auth.changeIsActive",
+                Status = (int)HttpStatusCode.OK,
+                Value = null,
+                Message = "Update status is active successfully"
             });
         }
     }

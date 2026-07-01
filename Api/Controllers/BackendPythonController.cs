@@ -1,15 +1,6 @@
-﻿using English.Website.Api.Dtos.AIDtos.AssemblyAIDto;
-using English.Website.Api.Dtos.AIDtos.DeepSeekDto;
-using English.Website.Api.Dtos.BackendPythonDtos;
-using English.Website.Api.Extensions.Helpers;
+﻿using English.Website.Api.Dtos.BackendPythonDtos;
 using English.Website.Application.Services;
-using English.Website.Application.Services.IServices;
-using English.Website.Domain.DatabaseContext;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Net;
-using System.Text.Json.Nodes;
-using whOperation.API.APIPayload;
 
 namespace English.Website.Api.Controllers
 {

@@ -85,8 +85,6 @@ namespace English.Website.Api.Extensions.Helpers
             var response = await httpClient.SendAsync(request);
             var content = await response.Content.ReadAsStringAsync();
 
-            Console.WriteLine("content: ", content);
-
             if (!response.IsSuccessStatusCode)
             {
                 throw new BadRequestException($"POST API request failed with status code {response.StatusCode} on URL {url}. Content: {content}");

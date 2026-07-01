@@ -110,9 +110,11 @@ namespace English.Website.Application.Services
             });
 
             // gọi api wav2vec2 python param RecordingId
-            await _backendPythonService.ConvertAudioToPhonetic(new RequestConvertAudioPhoneticDto
+            // _ thể hiện không cần chờ kết quả trả về từ api wav2vec2 python,
+            // vì api này sẽ gọi webhook để cập nhật dữ liệu vào database
+            _ = _backendPythonService.ConvertAudioToPhonetic(new RequestConvertAudioPhoneticDto
             {
-                AudioPath  = secureUrl,
+                AudioPath = secureUrl,
                 RecordingId = recordingId,
                 CallbackUrl = _webhookUrl,
                 TranscriptId = transcriptId
@@ -134,7 +136,6 @@ namespace English.Website.Application.Services
             await _dbContext.SaveChangesAsync();
 
             return transcriptId;
-
         }
     }
 }

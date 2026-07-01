@@ -25,12 +25,11 @@ namespace English.Website.Api.Controllers
             await _forgetPasswordService.SendResetPasswordOtp(email);
             return Ok(new APIResponseBase
             {
-                isResponseResult = false,
-                success = true,
-                endPointCode = "auth.forget-password.send-otp",
-                status = (int)HttpStatusCode.OK,
-                value = null,
-                message = "OTP sent successfully."
+                Success = true,
+                EndPointCode = "auth.forget-password.send-otp",
+                Status = (int)HttpStatusCode.OK,
+                Value = null,
+                Message = "OTP sent successfully."
             });
         }
 
@@ -40,12 +39,11 @@ namespace English.Website.Api.Controllers
             await _forgetPasswordService.ResetPasswordWithOtp(dto);
             return Ok(new APIResponseBase
             {
-                isResponseResult = false,
-                success = true,
-                endPointCode = "auth.forget-password.reset",
-                status = (int)HttpStatusCode.Created,
-                value = null,
-                message = "Password reset successful."
+                Success = true,
+                EndPointCode = "auth.forget-password.reset",
+                Status = (int)HttpStatusCode.Created,
+                Value = null,
+                Message = "Password reset successful."
             });
         }
     }
