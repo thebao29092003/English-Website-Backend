@@ -8,13 +8,10 @@ var services = builder.Services;
 // register services + automapper
 ServiceExtension.AddServices(services, configuration);
 
+// Logs (Nhật ký sự kiện): Các dòng chữ ghi lại sự kiện 
 builder.Host.UseSerilog();
-
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(configuration).CreateLogger();
-
-
-
 
 var app = builder.Build();
 

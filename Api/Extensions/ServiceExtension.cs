@@ -9,6 +9,11 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
+using OpenTelemetry;
+using OpenTelemetry.Exporter;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 namespace English.Website.Api.Extensions
 {
@@ -35,10 +40,11 @@ namespace English.Website.Api.Extensions
             services.AddScoped<IUserContextService, UserContextService>();
             services.AddScoped<ICloudinaryService, CloudinaryService>();
             services.AddScoped<AISpeechToTextService>();
+            services.AddScoped<ICloudinaryService, CloudinaryService>();
 
             // 3. Đăng ký AutoMapper
             // cfg => { } để viết riêng map thôi mình có file riêng rồi nên không cần
-            services.AddAutoMapper(cfg => { },typeof(MappingProfiles));
+            services.AddAutoMapper(cfg => { }, typeof(MappingProfiles));
 
             // 4. Đăng ký MEMORY CACHE (RAM) CỦA .NET
             services.AddMemoryCache();
@@ -52,11 +58,11 @@ namespace English.Website.Api.Extensions
             hoặc họ không xử lý lỗi này, thì tôi phải trả về lỗi cho Client dưới định dạng nào?"
             thì dòng phía dưới khai báo chuẩn cấu hình chuẩn RFC 7807 để trả lỗi
             */
-            services.AddProblemDetails(); 
+            services.AddProblemDetails();
 
             // 👇 ĐĂNG KÝ CẦU NỐI ĐỂ SERVICE CÓ THỂ ĐỌC/GHI COOKIE
             services.AddHttpContextAccessor();
-            
+
             //NÀO  SỬ DỤNG HTTP THÌ PHẢI KHAI BÁO
             services.AddHttpClient<IDeepSeekService, DeepSeekService>();
             services.AddHttpClient<IAssemblyAIService, AssemblyAIService>();
@@ -159,8 +165,46 @@ namespace English.Website.Api.Extensions
             // Khởi tạo và đăng ký Singleton cho Cloudinary
             services.AddSingleton(new Cloudinary(CLOUDINARY_URL));
 
-            // Đăng ký Service xử lý upload của bạn
-            services.AddScoped<ICloudinaryService, CloudinaryService>();
+            var serviceName = "english-website-backend"; // Tên ứng dụng hiển thị trên Grafana
+            var serviceVersion = "1.0.0";
+
+            /* đăng ký log grafata
+            -  Metrics (Số liệu đo lường): Các con số thống kê theo thời gian
+             (như tỉ lệ sử dụng CPU, dung lượng RAM, số lượng request/giây, thời gian phản hồi API trung bình)
+            -  Traces (Dấu vết hành trình): Khả năng theo dõi một yêu cầu từ lúc bắt đầu cho đến lúc kết thúc. 
+               Ví dụ: Khi người dùng gọi API, Trace sẽ đo chính xác xem:
+               Truy vấn DB mất 50ms, gọi API AssemblyAI mất 2000ms, gọi DeepSeek mất 1500ms
+             */
+            services.Configure<OtlpExporterOptions>(options =>
+            {
+                options.Endpoint = new Uri(configuration["Otel:Endpoint"]!);
+                options.Headers = configuration["Otel:Headers"];
+                options.Protocol = OtlpExportProtocol.HttpProtobuf;
+            });
+            services.AddOpenTelemetry()
+                .ConfigureResource(resource =>
+                    resource.AddService
+                    (
+                        serviceName: serviceName,
+                        serviceVersion: serviceVersion
+                    )
+                )
+
+                .WithMetrics(metrics =>
+                    metrics
+                        .AddAspNetCoreInstrumentation()
+                        .AddHttpClientInstrumentation()
+                        .AddRuntimeInstrumentation()
+                        .AddSqlClientInstrumentation()
+                )
+
+                .WithTracing(tracing => tracing
+                        .AddHttpClientInstrumentation()
+                        .AddAspNetCoreInstrumentation()
+                        .AddSqlClientInstrumentation()
+                        .AddEntityFrameworkCoreInstrumentation())
+                .UseOtlpExporter();
+
         }
     }
 }
