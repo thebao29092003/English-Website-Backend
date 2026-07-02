@@ -1,8 +1,8 @@
 ﻿using English.Website.Api.Dtos.AuthDtos;
-using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Serilog;
 using System.Net;
 using whOperation.API.APIPayload;
 
@@ -66,6 +66,7 @@ namespace English.Website.Api.Controllers
         public async Task<IActionResult> RefreshToken()
         {
             var result = await _authService.RefreshToken();
+            Log.Information("result => {@result}", result);
             return Ok(new APIResponseBase
             {
                 Success = true,

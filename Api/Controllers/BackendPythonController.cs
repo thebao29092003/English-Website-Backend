@@ -30,19 +30,9 @@ namespace English.Website.Api.Controllers
                 return Unauthorized(new { message = "Unauthorized webhook request." });
             }
 
-            try
-            {
-                await _aiSpeechToTextService.Update(webhookData);
-                // TÙY TRỌN ĐẨY SignalR (dùng khi có frontend)
-                return StatusCode(200);
-            }
-            catch (Exception ex)
-            {
-                // Ghi log lỗi lại nhưng vẫn nên trả về 200/500 tùy ý để báo cho AssemblyAI biết
-                Console.WriteLine($"Error processing completed transcription: {ex.Message}");
-                return StatusCode(500, new { error = ex.Message });
-            }
+            await _aiSpeechToTextService.Update(webhookData);
+            // TÙY TRỌN ĐẨY SignalR (dùng khi có frontend)
+            return StatusCode(200);
         }
-
     }
 }

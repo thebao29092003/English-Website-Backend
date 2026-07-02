@@ -17,7 +17,6 @@ namespace English.Website.Application.Services
         private readonly string _apiKey;
         private readonly EnglishDBContext _englishDBContext;
         private readonly HttpClient _httpClient;
-        private readonly IUserContextService _userContextService;
 
         public DeepSeekService(
             IConfiguration configuration,
@@ -28,7 +27,6 @@ namespace English.Website.Application.Services
         {
             _httpClient = httpClient;
             _apiKey = configuration["AI:DeepSeekApiKey"]!;
-            _userContextService = userContextService;
             _englishDBContext = englishDBContext;
         }
 
@@ -101,8 +99,10 @@ namespace English.Website.Application.Services
 
         public async Task<ReceiveDataFromDeepseekDto> CallDeepSeekApi(TranscriptRequestDto deepSeekRequest)
         {
+            #region call api deepseek
             string systemPrompt = SystemPrompt.systemPromptGeneric;
             string userPrompt = deepSeekRequest.UserPrompt;
+
             Guid userId = deepSeekRequest.UserId;
             Guid aiSpeechToTextId = deepSeekRequest.AISpeechToTextId;
 
@@ -134,6 +134,7 @@ namespace English.Website.Application.Services
             }
 
             await Task.WhenAll(tasksToAwait);
+            #endregion
 
             // Lấy kết quả từ các task
             var grammarResult = grammarTask.Result;
@@ -216,10 +217,10 @@ namespace English.Website.Application.Services
                 await _englishDBContext.SaveChangesAsync();
                 await transaction.CommitAsync();
             }
-            catch
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                throw new BadRequestException("error function CallDeepSeekApi");
+                throw new BadRequestException($"error function CallDeepSeekApi: {ex.Message}");
             }
             return mergedResultDto;
         }

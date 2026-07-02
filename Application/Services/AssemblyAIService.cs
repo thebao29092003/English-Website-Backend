@@ -1,5 +1,4 @@
-﻿using CloudinaryDotNet.Actions;
-using English.Website.Api.Dtos.AIDtos.AssemblyAIDto;
+﻿using English.Website.Api.Dtos.AIDtos.AssemblyAIDto;
 using English.Website.Api.Dtos.AIDtos.AzureSpeechDto;
 using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services.IServices;
@@ -76,8 +75,7 @@ namespace English.Website.Application.Services
                     AISpeechToTextId = speechToText.AISpeechToTextId,
                     UserId = speechToText.UserId,
                 });
-            } 
-            
+            }
         }
 
         public async Task<AssemblyAIResponseDto> CallAPIGetDataAssemblyAI(string transcriptId)

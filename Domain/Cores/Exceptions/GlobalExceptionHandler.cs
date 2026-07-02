@@ -38,8 +38,15 @@ namespace English.Website.Domain.Cores.Exceptions
             CancellationToken cancellationToken
         )
         {
+            // Lấy thông tin request để bổ sung vào log
+            var request = httpContext.Request;
+            var requestPath = $"{request.Method} {request.Path}{request.QueryString}";
+
             // 1. Ghi log lỗi vào hệ thống terminal khi mà chạy chương trình
-            _logger.LogError(exception, "Error not handler: {Message}", exception.Message);
+            _logger.LogError
+                (exception, 
+                "An unhandled exception occurred while processing request: {RequestPath}. Message: {Message}",
+                requestPath, exception.Message);
 
             int statusCode;
             string message;
@@ -76,12 +83,11 @@ namespace English.Website.Domain.Cores.Exceptions
 
             var response = new APIResponseBase
             {
-                isResponseResult = false,
-                success = false,
-                endPointCode = "system.error",
-                status = statusCode,
-                value = null,
-                message = message
+                Success = false,
+                EndPointCode = "system.error",
+                Status = statusCode,
+                Value = null,
+                Message = message
             };
 
             /* 
@@ -101,7 +107,7 @@ namespace English.Website.Domain.Cores.Exceptions
 
             using var scope = _scopeFactory.CreateScope();
             var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
-            
+
 
             string subject = "🚨 CẢNH BÁO LỖI HỆ THỐNG 500 - English Website";
 

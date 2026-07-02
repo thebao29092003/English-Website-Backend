@@ -1,23 +1,16 @@
-﻿using Azure;
-using Azure.Core;
-using English.Website.Api.Dtos.AuthDtos;
+﻿using English.Website.Api.Dtos.AuthDtos;
 using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services.IServices;
 using English.Website.Domain.DatabaseContext;
 using English.Website.Domain.Entities;
-using English.Website.Domain.Entities.AI;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
-using System.Net;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using whOperation.API.APIPayload;
 
 namespace English.Website.Application.Services
 {
@@ -38,7 +31,6 @@ namespace English.Website.Application.Services
             IEmailService emailService,
             IHttpContextAccessor httpContextAccessor,
             IUserContextService useContext
-
         )
         {
             _context = context;
@@ -197,11 +189,8 @@ namespace English.Website.Application.Services
         public async Task<TokenResponseDto> Login(UserDto userDto)
         {
             // đối với login không nên trả lỗi cụ thể dể tránh lộ thông tin về tài khoản, nên trả về lỗi chung chung như "Invalid username or password"
-            var user = await _context.User.FirstOrDefaultAsync(u => u.Username == userDto.Username);
-            if (user == null)
-            {
-                throw new BadRequestException("Invalid username or password");
-            }
+            var user = await _context.User.FirstOrDefaultAsync(u => u.Username == userDto.Username)
+                ?? throw new BadRequestException("Invalid username or password");
 
             var passwordVerificationResult = new PasswordHasher<User>().VerifyHashedPassword(user, user.Password, userDto.Password);
             if (passwordVerificationResult == PasswordVerificationResult.Failed)

@@ -57,11 +57,8 @@ namespace English.Website.Api.Extensions.Helpers
                 throw new BadRequestException($"GET API request failed with status code {response.StatusCode} on URL {url}. Content: {content}");
             }
 
-            var result = JsonSerializer.Deserialize<TResponse>(content, DefaultJsonOptions);
-            if (result == null)
-            {
-                throw new BadRequestException($"Failed to deserialize GET API response from {url}.");
-            }
+            var result = JsonSerializer.Deserialize<TResponse>(content, DefaultJsonOptions)
+                ?? throw new BadRequestException($"Failed to deserialize GET API response from {url}.");
 
             return result;
         }
@@ -90,11 +87,8 @@ namespace English.Website.Api.Extensions.Helpers
                 throw new BadRequestException($"POST API request failed with status code {response.StatusCode} on URL {url}. Content: {content}");
             }
 
-            var result = JsonSerializer.Deserialize<TResponse>(content, DefaultJsonOptions);
-            if (result == null)
-            {
-                throw new BadRequestException($"Failed to deserialize POST API response from {url}.");
-            }
+            var result = JsonSerializer.Deserialize<TResponse>(content, DefaultJsonOptions)
+                ?? throw new BadRequestException($"Failed to deserialize POST API response from {url}.");
 
             return result;
         }
