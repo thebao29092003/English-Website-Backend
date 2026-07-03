@@ -2,7 +2,10 @@
 using English.Website.Api.Dtos.AIDtos.AzureSpeechDto;
 using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services.IServices;
+using English.Website.Domain.Constants;
 using English.Website.Domain.DatabaseContext;
+using English.Website.Domain.Entities.AI.AIModelAudio;
+using English.Website.Api.Dtos.AIDtos.DeepSeekDto; 
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
@@ -12,22 +15,70 @@ namespace English.Website.Application.Services
     {
         private readonly string _apiKey;
         private readonly string _webhookAuth;
+        private readonly string _webhookUrl;
         private readonly EnglishDBContext _englishDBContext;
         private readonly HttpClient _httpClient;
+        private readonly IDeepSeekService _deepSeekService;
 
         public AssemblyAIService(
             IConfiguration configuration,
             HttpClient httpClient,
-            EnglishDBContext englishDBContext
+            EnglishDBContext englishDBContext,
+            IDeepSeekService deepSeekService
         )
         {
             _httpClient = httpClient;
             _apiKey = configuration["AI:AssemblyAIKey"]!;
-            _webhookAuth = configuration["AI:AssemblyAIKey"]!;
+            _webhookAuth = configuration["WebHook:AssemblyAI:Token"]!;
+            _webhookUrl = configuration["WebHook:AssemblyAI:Url"]!;
             _englishDBContext = englishDBContext;
+            _deepSeekService = deepSeekService;
         }
 
         public async Task GetDataAssemblyAI(string transcriptId)
+        {
+            AssemblyAIResponseDto assemblyAiResult = await CallAPIGetDataAssemblyAI(transcriptId);
+
+            var speechToText = await _englishDBContext.AISpeechToText
+                .FirstOrDefaultAsync(s => s.AssemblyAIId == transcriptId)
+                ?? throw new BadRequestException($"AISpeechToText record with AssemblyAiId '{transcriptId}' was not found");
+
+            var words = assemblyAiResult.Words;
+            var audioDuration = assemblyAiResult.AudioDuration;
+            var transcriptResult = assemblyAiResult.Text;
+
+            double wpm = (words?.Count ?? 0) / ((audioDuration ?? 0) / 60.0);
+
+            var fluencyScore = CalculateFluencyScore(words, audioDuration);
+
+            speechToText.AITranscript = transcriptResult;
+            speechToText.FluencyScore = fluencyScore; 
+            speechToText.OverallConfidence = assemblyAiResult.Confidence ?? 0.0;
+            speechToText.WordPerMinute = (int)Math.Round(wpm);
+            speechToText.WordsJson = JsonSerializer.Serialize(words);
+
+            speechToText.AudioUsage = new AudioUsage
+            {
+                UserId = speechToText.UserId,
+                AIModelAudioId = 1,
+                CalculatedCost = (0.15m / 3600m) * (decimal)(audioDuration ?? 0)
+            };
+
+            await _englishDBContext.SaveChangesAsync();
+
+            if (speechToText.TypeAnalyse != TypeAnalyse.NOT && transcriptResult != null)
+            {
+                var result = await _deepSeekService.CallDeepSeekApi(new TranscriptRequestDto
+                {
+                    Type = speechToText.TypeAnalyse,
+                    UserPrompt = transcriptResult,
+                    AISpeechToTextId = speechToText.AISpeechToTextId,
+                    UserId = speechToText.UserId,
+                });
+            }
+        }
+
+        public async Task<AssemblyAIResponseDto> CallAPIGetDataAssemblyAI(string transcriptId)
         {
             var headers = new Dictionary<string, string> { { "Authorization", _apiKey } };
 
@@ -39,27 +90,8 @@ namespace English.Website.Application.Services
                   requestUrl,
                   headers
             ) ?? throw new BadRequestException("assemblyAiResult is null");
-
-            var speechToText = await _englishDBContext.AISpeechToText
-                .FirstOrDefaultAsync(s => s.AssemblyAIId == transcriptId)
-                ?? throw new BadRequestException($"AISpeechToText record with AssemblyAiId '{transcriptId}' was not found");
-
-            var words = assemblyAiResult.Words;
-            var audioDuration = assemblyAiResult.AudioDuration;
-
-            double wpm =  (words?.Count ?? 0) / ((audioDuration ?? 0) / 60.0);
-            
-            var fluencyScore = CalculateFluencyScore(words, audioDuration);
-
-            speechToText.AITranscript = assemblyAiResult.Text;
-            speechToText.FluencyScore = fluencyScore;
-            speechToText.OverallConfidence = assemblyAiResult.Confidence ?? 0.0;
-            speechToText.WordPerMinute = (int)Math.Round(wpm);
-            speechToText.WordsJson = JsonSerializer.Serialize(assemblyAiResult.Words);
-
-            await _englishDBContext.SaveChangesAsync();
+            return assemblyAiResult;
         }
-
 
         public async Task<string> SubmitAudioAssemblyAI(AssemblyAIRequestDto requestDto)
         {
@@ -72,9 +104,9 @@ namespace English.Website.Application.Services
             requestDto.WebhookAuthHeaderName = "X-Webhook-Secret";
             requestDto.WebhookAuthHeaderValue = _webhookAuth;
             // sau này thay ngrok bằng domain
-            requestDto.WebhookUrl = "https://d7792j24-7025.asse.devtunnels.ms/api/assembly/webhook";
+            requestDto.WebhookUrl = _webhookUrl;
 
-            var assemblyAiResult = await HttpHelper.SendPostJsonAsync<AssemblyAIRequestDto,AssemblyAIResponseDto>(
+            var assemblyAiResult = await HttpHelper.SendPostJsonAsync<AssemblyAIRequestDto, AssemblyAIResponseDto>(
                  _httpClient,
                  requestUrl,
                  requestDto,
@@ -85,12 +117,6 @@ namespace English.Website.Application.Services
             return assemblyAiResult.Id;
         }
 
-        public async Task<AssemblyAIResponseDto> CallAPIDeepSeek(string transcriptId)
-        {
-            return null;
-
-        }
-
         public double CalculateFluencyScore(List<AssemblyAIWordDto>? words, double? audioDuration)
         {
             // Điều kiện bảo vệ: Nếu bài nói quá ngắn hoặc rỗng, trả về điểm tối thiểu
@@ -98,12 +124,13 @@ namespace English.Website.Application.Services
             {
                 return 10.0; // Điểm sàn tối thiểu
             }
+
             // 1. TÍNH TỐC ĐỘ NÓI (WPM)
             double durationInMinutes = (audioDuration ?? 0) / 60.0;
             double wpm = words.Count / durationInMinutes;
 
             double baseScore = 100.0;
-            if (wpm < 110.0)
+            if (wpm < 120.0)
             {
                 // Phạt nếu nói quá chậm (mỗi WPM thiếu so với mốc 110 trừ 0.6 điểm)
                 baseScore = 100.0 - ((110.0 - wpm) * 0.6);

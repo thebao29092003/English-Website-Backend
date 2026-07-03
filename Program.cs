@@ -1,4 +1,6 @@
 ﻿using English.Website.Api.Extensions;
+using Serilog;
+
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
@@ -7,6 +9,8 @@ var services = builder.Services;
 // register services + automapper
 ServiceExtension.AddServices(services, configuration);
 
+// Logs (Nhật ký sự kiện): Các dòng chữ ghi lại sự kiện 
+builder.Host.UseSerilog();
 
 var app = builder.Build();
 
@@ -19,6 +23,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseSerilogRequestLogging();
 
 app.UseHttpsRedirection();
 

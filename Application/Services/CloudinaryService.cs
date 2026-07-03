@@ -18,12 +18,14 @@ namespace English.Website.Application.Services
         private readonly IUserContextService _userContextService;
         private readonly IAssemblyAIService _assemblyAIService;
         private readonly IBackendPythonService _backendPythonService;
+        private readonly string _webhookUrl;
 
         public CloudinaryService(
             Cloudinary cloudinary,
             EnglishDBContext dbContext,
             IAssemblyAIService assemblyAIService,
             IBackendPythonService backendPythonService,
+            IConfiguration configuration,
             IUserContextService userContextService)
         {
             _cloudinary = cloudinary;
@@ -31,10 +33,12 @@ namespace English.Website.Application.Services
             _userContextService = userContextService;
             _assemblyAIService = assemblyAIService;
             _backendPythonService = backendPythonService;
+            _webhookUrl = configuration["WebHook:BackendPython:Url"]!;
         }
 
         public async Task<string?> UploadFileAsync(UploadRequestDto requestDto)
         {
+            #region upload file
             const long MaxFileSize = 5 * 1024 * 1024; // 5 MB
 
             var user = await _userContextService.GetUserDetail();
@@ -73,7 +77,7 @@ namespace English.Website.Application.Services
             };
 
             var uploadResult = await _cloudinary.UploadAsync(uploadParams);
-
+            #endregion
 
             if (uploadResult.Error != null)
             {
@@ -97,38 +101,52 @@ namespace English.Website.Application.Services
             // gọi api Assembly AI
             var transcriptId = await _assemblyAIService.SubmitAudioAssemblyAI(assemblyAIRequestDto);
 
-            await _dbContext.AISpeechToText.AddAsync(new AISpeechToText
-            {
-                RecordingId = recordingId,
-                UserId = user.UserId,
-                AssemblyAIId = transcriptId
-            });
-
             // gọi api wav2vec2 python param RecordingId
-            await _backendPythonService.ConvertAudioToPhonetic(new RequestConvertAudioPhoneticDto
+            // _ thể hiện không cần chờ kết quả trả về từ api wav2vec2 python,
+            // vì api này sẽ gọi webhook để cập nhật dữ liệu vào database
+            _ = _backendPythonService.ConvertAudioToPhonetic(new RequestConvertAudioPhoneticDto
             {
-                AudioPath  = secureUrl,
+                AudioPath = secureUrl,
                 RecordingId = recordingId,
-                CallbackUrl = "https://localhost:7025/api/backend-python/phonetic-webhook"
+                CallbackUrl = _webhookUrl,
+                TranscriptId = transcriptId
             });
 
+            using var transaction = await _dbContext.Database.BeginTransactionAsync();
 
-            // lưu database
-            await _dbContext.Recording.AddAsync(new Recording
+            try
             {
-                RecordingId = recordingId,
-                UserId = user.UserId,
-                CloudinaryPublicId = uploadResult.PublicId,
-                Url = secureUrl,
-                FileName = uploadResult.DisplayName,
-                FileSize = uploadResult.Bytes,
-                FileType = uploadResult.Format,
-                Duration = uploadResult.Duration,
-            });
-            await _dbContext.SaveChangesAsync();
+                // lưu database
+                await _dbContext.Recording.AddAsync(new Recording
+                {
+                    RecordingId = recordingId,
+                    UserId = user.UserId,
+                    CloudinaryPublicId = uploadResult.PublicId,
+                    Url = secureUrl,
+                    FileName = uploadResult.DisplayName,
+                    FileSize = uploadResult.Bytes,
+                    FileType = uploadResult.Format,
+                    Duration = uploadResult.Duration,
+                });
+
+                await _dbContext.AISpeechToText.AddAsync(new AISpeechToText
+                {
+                    RecordingId = recordingId,
+                    UserId = user.UserId,
+                    AssemblyAIId = transcriptId,
+                    TypeAnalyse = requestDto.TypeAnalyse
+                });
+
+                await _dbContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                throw new BadRequestException($"Error saving to database: {ex.Message}");
+            }
 
             return transcriptId;
-
         }
     }
 }

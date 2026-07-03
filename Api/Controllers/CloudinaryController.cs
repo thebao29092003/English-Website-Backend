@@ -25,12 +25,11 @@ namespace English.Website.Api.Controllers
             var result = await _cloudinaryService.UploadFileAsync(requestDto);
             return Ok(new APIResponseBase
             {
-                isResponseResult = true,
-                success = true,
-                endPointCode = "cloudinary.upload",
-                status = (int)HttpStatusCode.OK,
-                value = result,
-                message = "Upload cloudinary successfully"
+                Success = true,
+                EndPointCode = "cloudinary.upload",
+                Status = (int)HttpStatusCode.OK,
+                Value = result,
+                Message = "Upload cloudinary successfully"
             });
         }
     }

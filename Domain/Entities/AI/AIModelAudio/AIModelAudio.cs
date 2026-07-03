@@ -15,8 +15,7 @@ namespace English.Website.Domain.Entities.AI.AIModelAudio
 
         public string Provider { get; set; } = null!;
 
-        [Column(TypeName = "decimal(18, 6)")]
-        public decimal PricePerSecond { get; set; }
+        public double PricePerHour { get; set; }
 
         public bool IsActive { get; set; } = true;
 

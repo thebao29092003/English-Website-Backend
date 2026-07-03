@@ -13,6 +13,10 @@ namespace English.Website.Domain.Entities.AI.AIModelText
 
         public Guid? AISpeechToTextId { get; set; }
 
+        public double? OverallGrammarScore { get; set; }
+
+        public double? OverallVocabScore { get; set; }
+
         [Required]
         public string UserTranscript { get; set; } = null!; // Lưu vết đoạn text học sinh nói
 

@@ -1,6 +1,5 @@
 ﻿using English.Website.Api.Dtos.AIDtos.AssemblyAIDto;
 using English.Website.Api.Dtos.AIDtos.AzureSpeechDto;
-using English.Website.Api.Dtos.AIDtos.DeepSeekDto;
 
 namespace English.Website.Application.Services.IServices
 {
@@ -12,7 +11,7 @@ namespace English.Website.Application.Services.IServices
 
         Task GetDataAssemblyAI(string transcriptId);
 
-        Task<AssemblyAIResponseDto> CallAPIDeepSeek(string transcriptId);
+        Task<AssemblyAIResponseDto> CallAPIGetDataAssemblyAI(string transcriptId);
 
         double CalculateFluencyScore(List<AssemblyAIWordDto> words, double? audioDuration);
 

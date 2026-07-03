@@ -38,8 +38,15 @@ namespace English.Website.Domain.Cores.Exceptions
             CancellationToken cancellationToken
         )
         {
+            // Lấy thông tin request để bổ sung vào log
+            var request = httpContext.Request;
+            var requestPath = $"{request.Method} {request.Path}{request.QueryString}";
+
             // 1. Ghi log lỗi vào hệ thống terminal khi mà chạy chương trình
-            _logger.LogError(exception, "Error not handler: {Message}", exception.Message);
+            _logger.LogError
+                (exception, 
+                "An unhandled exception occurred while processing request: {RequestPath}. Message: {Message}",
+                requestPath, exception.Message);
 
             int statusCode;
             string message;
@@ -76,12 +83,11 @@ namespace English.Website.Domain.Cores.Exceptions
 
             var response = new APIResponseBase
             {
-                isResponseResult = false,
-                success = false,
-                endPointCode = "system.error",
-                status = statusCode,
-                value = null,
-                message = message
+                Success = false,
+                EndPointCode = "system.error",
+                Status = statusCode,
+                Value = null,
+                Message = message
             };
 
             /* 
@@ -95,13 +101,13 @@ namespace English.Website.Domain.Cores.Exceptions
             return true; // Trả về true để báo hiệu .NET đã xử lý xong lỗi này [6]
         }
 
-        private async Task SendErrorEmailToAdminAsync(Exception exception, HttpContext context)
+        private async Task SendErrorEmailToAdminAsync(Exception exception, HttpContext? context)
         {
             var adminEmail = _configuration["AdminSettings:Email"]; // Đọc email nhận của bạn từ cấu hình
 
             using var scope = _scopeFactory.CreateScope();
             var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
-            
+
 
             string subject = "🚨 CẢNH BÁO LỖI HỆ THỐNG 500 - English Website";
 
@@ -109,7 +115,7 @@ namespace English.Website.Domain.Cores.Exceptions
                 <div style='font-family: Arial, sans-serif; line-height: 1.6;'>
                     <h2 style='color: red;'>Phát hiện lỗi sập nguồn hệ thống (HTTP 500)</h2>
                     <p><strong>Thời gian xảy ra (UTC):</strong> {DateTime.UtcNow:dd/MM/yyyy HH:mm:ss}</p>
-                    <p><strong>API Endpoint bị lỗi:</strong> <span style='background: #eee; padding: 2px 5px;'>{context.Request.Method} {context.Request.Path}</span></p>
+                    <p><strong>API Endpoint bị lỗi:</strong> <span style='background: #eee; padding: 2px 5px;'>{context?.Request.Method} {context?.Request.Path}</span></p>
                     <p><strong>Nội dung lỗi:</strong> <span style='color: red; font-weight: bold;'>{exception.Message}</span></p>
                     <hr/>
                     <p><strong>Chi tiết Stack Trace (Dòng code bị lỗi):</strong></p>

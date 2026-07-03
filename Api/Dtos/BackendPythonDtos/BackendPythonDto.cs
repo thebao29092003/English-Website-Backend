@@ -12,6 +12,9 @@ namespace English.Website.Api.Dtos.BackendPythonDtos
         
         [JsonPropertyName("callback_url")]
         public string? CallbackUrl { get; set; }
+
+        [JsonPropertyName("transcript_id")]
+        public string? TranscriptId { get; set; }
     }
     public class ResponseConvertAudioPhoneticDto
     {

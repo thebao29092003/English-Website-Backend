@@ -1,11 +1,14 @@
-﻿using System.Text.Json.Serialization;
+﻿using English.Website.Domain.Constants;
+using System.Text.Json.Serialization;
 
 namespace English.Website.Api.Dtos.AIDtos.DeepSeekDto
 {
     public class TranscriptRequestDto
     {
-        public required string userPrompt { get; set; } 
-        public required string type { get; set; }
+        public required string UserPrompt { get; set; } 
+        public required TypeAnalyse Type { get; set; }
+        public required Guid UserId { get; set; }
+        public required Guid AISpeechToTextId { get; set; }
     }
 
     public class DeepSeekRequestDto

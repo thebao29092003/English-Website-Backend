@@ -9,6 +9,13 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
+using OpenTelemetry.Exporter;
+using OpenTelemetry.Logs;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using Serilog;
+using Serilog.Sinks.OpenTelemetry;
 
 namespace English.Website.Api.Extensions
 {
@@ -16,53 +23,94 @@ namespace English.Website.Api.Extensions
     {
         public static void AddServices(this IServiceCollection services, IConfiguration configuration)
         {
-            // Add services to the container.
+            ServiceGeneric(services, configuration);
 
-            services.AddControllers();
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-            services.AddEndpointsApiExplorer();
-            services.AddSwaggerGen();
+            ServiceInternal(services);
 
-            // 1. Đăng ký DbContext
-            services.AddDbContext<EnglishDBContext>(options =>
-                options.UseSqlServer(configuration.GetConnectionString("englistWebsite")));
-
-            // 2. Khai báo container để sử dụng được DI
-            // tạo ra mỗi instance duy nhất với mỗi request
-            services.AddScoped<AuthService>();
-            services.AddScoped<ForgetPasswordService>();
-            services.AddScoped<IEmailService, EmailService>();
-            services.AddScoped<IUserContextService, UserContextService>();
-            services.AddScoped<ICloudinaryService, CloudinaryService>();
-            services.AddScoped<AISpeechToTextService>();
-
-            // 3. Đăng ký AutoMapper
-            // cfg => { } để viết riêng map thôi mình có file riêng rồi nên không cần
-            services.AddAutoMapper(cfg => { },typeof(MappingProfiles));
-
-            // 4. Đăng ký MEMORY CACHE (RAM) CỦA .NET
-            services.AddMemoryCache();
-
-            // 👇 ĐĂNG KÝ BỘ XỬ LÝ LỖI TOÀN CỤC CỦA .NET 8
-            services.AddExceptionHandler<GlobalExceptionHandler>();
-
-            /* 
-            "Nếu lập trình viên có viết bộ xử lý lỗi riêng (GlobalExceptionHandler), 
-            tôi sẽ gọi nó. Nhưng lỡ như bộ xử lý lỗi của họ bị lỗi tiếp,
-            hoặc họ không xử lý lỗi này, thì tôi phải trả về lỗi cho Client dưới định dạng nào?"
-            thì dòng phía dưới khai báo chuẩn cấu hình chuẩn RFC 7807 để trả lỗi
-            */
-            services.AddProblemDetails(); 
-
-            // 👇 ĐĂNG KÝ CẦU NỐI ĐỂ SERVICE CÓ THỂ ĐỌC/GHI COOKIE
-            services.AddHttpContextAccessor();
-            
-            //NÀO  SỬ DỤNG HTTP THÌ PHẢI KHAI BÁO
-            services.AddHttpClient<IDeepSeekService, DeepSeekService>();
-            services.AddHttpClient<IAssemblyAIService, AssemblyAIService>();
-            services.AddHttpClient<IBackendPythonService, BackendPythonService>();
+            ServiceHttp(services);
 
             // register authentication
+            ServiceAuth(services, configuration);
+
+            var apiSecret = configuration["Cloud:Cloudinary"];
+            var CLOUDINARY_URL = $"cloudinary://347691969814999:{apiSecret}@dshd9jst0";
+            // Khởi tạo và đăng ký Singleton cho Cloudinary
+            services.AddSingleton(new Cloudinary(CLOUDINARY_URL));
+
+            ServiceSeriLogGrafata(services, configuration);
+        }
+
+        private static void ServiceSeriLogGrafata(IServiceCollection services, IConfiguration configuration)
+        {
+            var baseUrl = configuration["Otel:Endpoint"];
+
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Information()
+                .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+                .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
+                .WriteTo.Console() // Ghi log ra màn hình Console local bằng Serilog
+                .WriteTo.OpenTelemetry(options =>
+                {
+                    //  Đẩy trực tiếp log lên Grafana Loki thông qua cổng /v1/logs
+                    options.Endpoint = $"{baseUrl}/v1/logs";
+                    options.Protocol = OtlpProtocol.HttpProtobuf;
+                    options.Headers = new Dictionary<string, string>
+                    {
+                        { "Authorization", configuration["Otel:SeriLogAuthHeader"]! }
+                    };
+                    options.ResourceAttributes = new Dictionary<string, object>
+                    {
+                        { "service.name", configuration["Otel:serviceName"]! }
+                    };
+                })
+                .CreateLogger();
+
+            /* đăng ký log grafata
+            -  Metrics (Số liệu đo lường): Các con số thống kê theo thời gian
+             (như tỉ lệ sử dụng CPU, dung lượng RAM, số lượng request/giây, thời gian phản hồi API trung bình)
+            -  Traces (Dấu vết hành trình): Khả năng theo dõi một yêu cầu từ lúc bắt đầu cho đến lúc kết thúc. 
+               Ví dụ: Khi người dùng gọi API, Trace sẽ đo chính xác xem:
+               Truy vấn DB mất 50ms, gọi API AssemblyAI mất 2000ms, gọi DeepSeek mất 1500ms
+             */
+            services.AddOpenTelemetry()
+                .ConfigureResource(resource =>
+                    resource.AddService
+                    (
+                        serviceName: configuration["Otel:serviceName"]!,
+                        serviceVersion: configuration["Otel:serviceVersion"]!
+                    )
+                )
+
+                .WithMetrics(metrics =>
+                    metrics
+                        .AddAspNetCoreInstrumentation()
+                        .AddHttpClientInstrumentation()
+                        .AddRuntimeInstrumentation()
+                        .AddSqlClientInstrumentation()
+                        .AddOtlpExporter(options =>
+                        {
+                            options.Endpoint = new Uri($"{baseUrl}/v1/metrics"!);
+                            options.Headers = configuration["Otel:Headers"];
+                            options.Protocol = OtlpExportProtocol.HttpProtobuf;
+                        })
+                )
+
+                .WithTracing(tracing => tracing
+                        .AddHttpClientInstrumentation()
+                        .AddAspNetCoreInstrumentation()
+                        .AddSqlClientInstrumentation()
+                        .AddEntityFrameworkCoreInstrumentation()
+                        .AddOtlpExporter(options =>
+                        {
+                            options.Endpoint = new Uri($"{baseUrl}/v1/traces"!);
+                            options.Headers = configuration["Otel:Headers"];
+                            options.Protocol = OtlpExportProtocol.HttpProtobuf;
+                        })
+                );
+        }
+
+        private static void ServiceAuth(IServiceCollection services, IConfiguration configuration)
+        {
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
@@ -153,14 +201,62 @@ namespace English.Website.Api.Extensions
                         }
                     };
                 });
+        }
 
-            var apiSecret = configuration["Cloud:Cloudinary"];
-            var CLOUDINARY_URL = $"cloudinary://347691969814999:{apiSecret}@dshd9jst0";
-            // Khởi tạo và đăng ký Singleton cho Cloudinary
-            services.AddSingleton(new Cloudinary(CLOUDINARY_URL));
+        private static void ServiceHttp(IServiceCollection services)
+        {
+            // 👇 ĐĂNG KÝ CẦU NỐI ĐỂ SERVICE CÓ THỂ ĐỌC/GHI COOKIE
+            services.AddHttpContextAccessor();
 
-            // Đăng ký Service xử lý upload của bạn
+            //NÀO SỬ DỤNG HTTP THÌ PHẢI KHAI BÁO KHÔNG CẦN KHAI BÁO THÊM AddScoped
+            services.AddHttpClient<IDeepSeekService, DeepSeekService>();
+            services.AddHttpClient<IAssemblyAIService, AssemblyAIService>();
+            services.AddHttpClient<IBackendPythonService, BackendPythonService>();
+        }
+
+        private static void ServiceInternal(IServiceCollection services)
+        {
+            // 2. Khai báo container để sử dụng được DI
+            // tạo ra mỗi instance duy nhất với mỗi request
+            services.AddScoped<AuthService>();
+            services.AddScoped<ForgetPasswordService>();
+            services.AddScoped<IEmailService, EmailService>();
+            services.AddScoped<IUserContextService, UserContextService>();
+            services.AddScoped<ICloudinaryService, CloudinaryService>();
+            services.AddScoped<AISpeechToTextService>();
             services.AddScoped<ICloudinaryService, CloudinaryService>();
         }
+
+        private static void ServiceGeneric(IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddControllers();
+
+            services.AddEndpointsApiExplorer();
+            services.AddSwaggerGen();
+
+            // 1. Đăng ký DbContext
+            services.AddDbContext<EnglishDBContext>(options =>
+                options.UseSqlServer(configuration.GetConnectionString("englistWebsite")));
+
+            // 3. Đăng ký AutoMapper
+            // cfg => { } để viết riêng map thôi mình có file riêng rồi nên không cần
+            services.AddAutoMapper(cfg => { }, typeof(MappingProfiles));
+
+            // 4. Đăng ký MEMORY CACHE (RAM) CỦA .NET
+            services.AddMemoryCache();
+
+            // 👇 ĐĂNG KÝ BỘ XỬ LÝ LỖI TOÀN CỤC CỦA .NET 8
+            services.AddExceptionHandler<GlobalExceptionHandler>();
+
+            /* 
+            "Nếu lập trình viên có viết bộ xử lý lỗi riêng (GlobalExceptionHandler), 
+            tôi sẽ gọi nó. Nhưng lỡ như bộ xử lý lỗi của họ bị lỗi tiếp,
+            hoặc họ không xử lý lỗi này, thì tôi phải trả về lỗi cho Client dưới định dạng nào?"
+            thì dòng phía dưới khai báo chuẩn cấu hình chuẩn RFC 7807 để trả lỗi
+            */
+            services.AddProblemDetails();
+        }
     }
+
+
 }

@@ -5,7 +5,10 @@ namespace English.Website.Api.Dtos.BackendPythonDtos
     public class PythonPhonemeWebhookDto
     {
         [JsonPropertyName("recordingId")]
-        public string RecordingId { get; set; }
+        public string RecordingId { get; set; } = string.Empty;
+
+        [JsonPropertyName("transcriptId")]
+        public string TranscriptId { get; set; } = string.Empty;
 
         [JsonPropertyName("phonemes")]
         public string Phonemes { get; set; } = string.Empty;

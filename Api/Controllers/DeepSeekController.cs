@@ -3,7 +3,6 @@ using English.Website.Application.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
-using System.Text.Json.Nodes;
 using whOperation.API.APIPayload;
 
 namespace English.Website.Api.Controllers
@@ -26,12 +25,11 @@ namespace English.Website.Api.Controllers
             var result = await _deepSeekService.CallDeepSeekApi(transcriptRequest);
             return Ok(new APIResponseBase
             {
-                isResponseResult = false,
-                success = true,
-                endPointCode = "deepseek.chat",
-                status = (int)HttpStatusCode.OK,
-                value = result,
-                message = "DeepSeek response successfully"
+                Success = true,
+                EndPointCode = "deepseek.chat",
+                Status = (int)HttpStatusCode.OK,
+                Value = result,
+                Message = "DeepSeek response successfully"
             });
         }
 
