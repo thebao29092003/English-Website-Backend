@@ -1,6 +1,7 @@
 ﻿using English.Website.Api.Extensions;
 using Serilog;
 
+
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
 var services = builder.Services;
@@ -10,8 +11,6 @@ ServiceExtension.AddServices(services, configuration);
 
 // Logs (Nhật ký sự kiện): Các dòng chữ ghi lại sự kiện 
 builder.Host.UseSerilog();
-Log.Logger = new LoggerConfiguration()
-    .ReadFrom.Configuration(configuration).CreateLogger();
 
 var app = builder.Build();
 
