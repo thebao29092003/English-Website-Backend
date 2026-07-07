@@ -130,9 +130,9 @@ namespace English.Website.Application.Services
             double wpm = words.Count / durationInMinutes;
 
             double baseScore = 100.0;
-            if (wpm < 120.0)
+            if (wpm < 110.0)
             {
-                // Phạt nếu nói quá chậm (mỗi WPM thiếu so với mốc 110 trừ 0.6 điểm)
+                // Phạt nếu nói quá chậm (mỗi WPM thiếu so với mốc 120 trừ 0.6 điểm)
                 baseScore = 100.0 - ((110.0 - wpm) * 0.6);
             }
             else if (wpm > 150.0)
