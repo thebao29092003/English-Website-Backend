@@ -66,7 +66,7 @@ namespace English.Website.Application.Services
             {
                 new Claim("Email", user.Username),
                 new Claim("UserId", user.UserId.ToString()),
-                new Claim("Role", user.Role),
+                new Claim("Role", user.Role.ToString()),
                 new Claim("SecurityStamp", user.SecurityStamp)
             };
 
