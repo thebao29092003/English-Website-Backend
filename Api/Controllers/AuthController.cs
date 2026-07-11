@@ -19,7 +19,7 @@ namespace English.Website.Api.Controllers
             _authService = authService;
         }
 
-        [HttpPost("register/send-otp")]
+        [HttpGet("register/send-otp")]
         public async Task<IActionResult> SendRegisterOtp([FromQuery] string email)
         {
             await _authService.SendRegisterOtp(email);

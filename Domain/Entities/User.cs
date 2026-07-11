@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using English.Website.Domain.Constants;
+using System.ComponentModel.DataAnnotations;
 
 namespace English.Website.Domain.Entities
 {
@@ -8,7 +9,7 @@ namespace English.Website.Domain.Entities
         public Guid UserId { get; set; }
         public string Username { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
-        public string Role { get; set; } = string.Empty;
+        public TypeRole Role { get; set; } = TypeRole.USER;
         public string? RefreshToken { get; set; }
         public DateTime? RefreshTokenExpiryTime { get; set; }
         public string  SecurityStamp { get; set; } = string.Empty;

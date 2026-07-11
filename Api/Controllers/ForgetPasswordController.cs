@@ -19,7 +19,7 @@ namespace English.Website.Api.Controllers
             _forgetPasswordService = forgetPasswordService;
         }
 
-        [HttpPost("send-otp")]
+        [HttpGet("send-otp")]
         public async Task<IActionResult> SendRegisterOtp([FromQuery] string email)
         {
             await _forgetPasswordService.SendResetPasswordOtp(email);

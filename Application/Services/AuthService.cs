@@ -66,7 +66,7 @@ namespace English.Website.Application.Services
             {
                 new Claim("Email", user.Username),
                 new Claim("UserId", user.UserId.ToString()),
-                new Claim("Role", user.Role),
+                new Claim("Role", user.Role.ToString()),
                 new Claim("SecurityStamp", user.SecurityStamp)
             };
 
@@ -130,7 +130,7 @@ namespace English.Website.Application.Services
 
             // 3. Lưu vào RAM trong vòng 5 phút
             string cacheKey = $"reg-otp:{toEmail}";
-            _memoryCache.Set(cacheKey, otp, TimeSpan.FromMinutes(10));
+            _memoryCache.Set(cacheKey, otp, TimeSpan.FromMinutes(5));
 
             string subject = "Mã xác nhận đăng ký tài khoản - English Website";
             string body = $"<h3>Chào mừng bạn đến với English Website!</h3>" +

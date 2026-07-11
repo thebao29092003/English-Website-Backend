@@ -1,4 +1,4 @@
-﻿
+
 using CloudinaryDotNet;
 using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services;
@@ -225,6 +225,7 @@ namespace English.Website.Api.Extensions
             services.AddScoped<ICloudinaryService, CloudinaryService>();
             services.AddScoped<AISpeechToTextService>();
             services.AddScoped<ICloudinaryService, CloudinaryService>();
+            services.AddScoped<HomeService>();
         }
 
         private static void ServiceGeneric(IServiceCollection services, IConfiguration configuration)
@@ -244,6 +245,19 @@ namespace English.Website.Api.Extensions
 
             // 4. Đăng ký MEMORY CACHE (RAM) CỦA .NET
             services.AddMemoryCache();
+
+            // 5. Đăng ký CORS
+            var corsOrigins = configuration["CorsOrigins"]!;
+            services.AddCors(options =>
+            {
+                options.AddPolicy("AllowFrontend", policy =>
+                {
+                    policy.WithOrigins(corsOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                          .AllowAnyHeader()
+                          .AllowAnyMethod()
+                          .AllowCredentials();
+                });
+            });
 
             // 👇 ĐĂNG KÝ BỘ XỬ LÝ LỖI TOÀN CỤC CỦA .NET 8
             services.AddExceptionHandler<GlobalExceptionHandler>();

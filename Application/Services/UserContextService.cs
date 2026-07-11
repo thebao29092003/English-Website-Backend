@@ -43,7 +43,7 @@ namespace English.Website.Application.Services
                     CreatedAt = u.CreatedAt,
                     IsActive = u.IsActive,
                     LastLoginAt = u.LastLoginAt,
-                    Role = u.Role
+                    Role = u.Role.ToString()
                 })
                 .FirstOrDefaultAsync();
             if (userDetail == null) {

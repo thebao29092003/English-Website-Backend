@@ -28,11 +28,18 @@ namespace English.Website.Application.Services
             // cần xem xét viết hàm riêng bên asseblyAIService để call apiGetData để lấy ra wordsList chứ 
             // lấy lên từ database sẽ bị trường hợp bên webhook kia chưa kịp lưu vào database
             var assemblyAiResult = await _assemblyAIService.CallAPIGetDataAssemblyAI(webhookData.TranscriptId);
+            
+            // Kiểm tra xem kết quả lần 1 đã đạt yêu cầu chưa (ví dụ: null hoặc chưa xử lý xong)
+            if (assemblyAiResult == null || assemblyAiResult.Words == null || !assemblyAiResult.Words.Any())
+            {
+                // Nếu chưa có dữ liệu mong muốn, đợi 2 giây rồi thử lại lần cuối
+                await Task.Delay(2000);
+                assemblyAiResult = await _assemblyAIService.CallAPIGetDataAssemblyAI(webhookData.TranscriptId);
+            }
+            var wordsList = (assemblyAiResult.Words) ?? throw new BadRequestException("Not found wordsList");
 
             var result =  _dbContext.AISpeechToText.FirstOrDefault(s => s.RecordingId == Guid.Parse(webhookData.RecordingId))
                 ?? throw new BadRequestException("Not found AISpeechToText by RecordingId");
-
-            var wordsList = (assemblyAiResult.Words) ?? throw new BadRequestException("Not found wordsList");
 
             var wordListOnlyText = wordsList
                .Select(w => w.Text)
