@@ -2,6 +2,7 @@ using System.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using English.Website.Application.Services;
+using English.Website.Api.Dtos.HomeDtos;
 using whOperation.API.APIPayload;
 
 namespace English.Website.Api.Controllers
@@ -19,7 +20,6 @@ namespace English.Website.Api.Controllers
         }
 
         [HttpGet("recordings")]
-        
         public async Task<IActionResult> GetUserRecordings()
         {
             var result = await _homeService.GetUserRecordingsAsync();
@@ -31,6 +31,21 @@ namespace English.Website.Api.Controllers
                 Status = (int)HttpStatusCode.OK,
                 Value = result,
                 Message = "Get user recordings successfully."
+            });
+        }
+
+        [HttpGet("audio-detail")]
+        public async Task<IActionResult> GetAudioDetail([FromQuery] string recordingId)
+        {
+            var result = await _homeService.GetAudioDetailAsync(recordingId);
+
+            return Ok(new APIResponseBase
+            {
+                Success = true,
+                EndPointCode = "home.audio-detail",
+                Status = (int)HttpStatusCode.OK,
+                Value = result,
+                Message = "Get audio detail successfully."
             });
         }
     }

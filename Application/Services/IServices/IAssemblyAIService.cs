@@ -1,4 +1,4 @@
-﻿using English.Website.Api.Dtos.AIDtos.AssemblyAIDto;
+using English.Website.Api.Dtos.AIDtos.AssemblyAIDto;
 using English.Website.Api.Dtos.AIDtos.AzureSpeechDto;
 
 namespace English.Website.Application.Services.IServices
@@ -13,7 +13,7 @@ namespace English.Website.Application.Services.IServices
 
         Task<AssemblyAIResponseDto> CallAPIGetDataAssemblyAI(string transcriptId);
 
-        double CalculateFluencyScore(List<AssemblyAIWordDto> words, double? audioDuration);
+        FluencyAnalysisResult CalculateFluencyScore(List<AssemblyAIWordDto>? words, double? audioDuration);
 
     }
 }
