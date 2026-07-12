@@ -124,6 +124,9 @@ namespace English.Website.Api.Extensions
 
                         ValidateLifetime = true,
 
+                        // Đưa độ lệch thời gian về 0 giây để khóa ngay lập tức khi hết hạn
+                        ClockSkew = TimeSpan.Zero,
+
                         ValidateIssuerSigningKey = true,
                         IssuerSigningKey = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(configuration["AppSettings:SecretKey"]!)),
 

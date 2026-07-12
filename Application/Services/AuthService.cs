@@ -52,7 +52,7 @@ namespace English.Website.Application.Services
             {
                 HttpOnly = true, // 👈 Bảo vệ khỏi XSS (React không đọc được)
                 Secure = true,   // 👈 Chỉ gửi qua HTTPS (khi deploy thật)
-                SameSite = SameSiteMode.Lax, // 👈 Chống tấn công CSRF
+                SameSite = SameSiteMode.None, // 👈 Chống tấn công (nếu mà sau này mua domain chung thì bật lên là lax)
                 Expires = DateTime.UtcNow.AddDays(7) // Khớp với hạn của RefreshToken
             };
 

@@ -56,5 +56,11 @@ namespace English.Website.Api.Dtos.BackendPythonDtos
 
         [JsonPropertyName("status")]
         public string Status { get; set; } = string.Empty;
+
+        [JsonPropertyName("original_pronunciation")]
+        public string OriginalPronunciation { get; set; } = string.Empty;
+
+        [JsonPropertyName("standard_pronunciation")]
+        public string StandardPronunciation { get; set; } = string.Empty;
     }
 }

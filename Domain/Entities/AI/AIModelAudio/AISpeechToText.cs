@@ -1,4 +1,4 @@
-﻿using English.Website.Domain.Constants;
+using English.Website.Domain.Constants;
 using English.Website.Domain.Entities.AI.AIModelAudio;
 using English.Website.Domain.Entities.AI.AIModelText;
 using System.ComponentModel.DataAnnotations;
@@ -22,6 +22,7 @@ namespace English.Website.Domain.Entities.AI
 
         public string? WordsJson { get; set; } = string.Empty;
         public string? WordsPronunciationScore { get; set; }
+        public string? FluencyErrorsJson { get; set; }
 
         public int? WordPerMinute { get; set; }
 
