@@ -19,6 +19,7 @@ namespace English.Website.Api.Controllers
         }
 
         [HttpGet("recordings")]
+        
         public async Task<IActionResult> GetUserRecordings()
         {
             var result = await _homeService.GetUserRecordingsAsync();
