@@ -1,5 +1,7 @@
 
 using CloudinaryDotNet;
+using Hangfire;
+using Hangfire.SqlServer;
 using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services;
 using English.Website.Application.Services.IServices;
@@ -26,6 +28,8 @@ namespace English.Website.Api.Extensions
             ServiceGeneric(services, configuration);
 
             ServiceInternal(services);
+
+            ServiceHangfire(services, configuration);
 
             ServiceHttp(services);
 
@@ -272,6 +276,26 @@ namespace English.Website.Api.Extensions
             thì dòng phía dưới khai báo chuẩn cấu hình chuẩn RFC 7807 để trả lỗi
             */
             services.AddProblemDetails();
+        }
+
+        private static void ServiceHangfire(IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddHangfire(config => config
+                .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+                .UseSimpleAssemblyNameTypeSerializer()
+                .UseRecommendedSerializerSettings()
+                .UseSqlServerStorage(configuration.GetConnectionString("englistWebsite"), new SqlServerStorageOptions
+                {
+                    CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+                    SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+                    QueuePollInterval = TimeSpan.Zero,
+                    UseRecommendedIsolationLevel = true,
+                    DisableGlobalLocks = true
+                }));
+
+            // Kích hoạt Background Job Server [1.1]. Dòng này biến ứng dụng .NET của bạn thành một "Worker" thực thụ,
+            // chịu trách nhiệm lắng nghe SQL Server và trực tiếp thực thi các tác vụ ngầm khi đến giờ 
+            services.AddHangfireServer();
         }
     }
 

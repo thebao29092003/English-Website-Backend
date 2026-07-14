@@ -1,4 +1,5 @@
 using English.Website.Api.Extensions;
+using Hangfire;
 using Serilog;
 
 
@@ -32,6 +33,8 @@ app.UseCors("AllowFrontend");
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseHangfireDashboard();
 
 app.MapControllers();
 
