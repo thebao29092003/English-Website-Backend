@@ -33,20 +33,5 @@ namespace English.Website.Api.Controllers
                 Message = "Get user recordings successfully."
             });
         }
-
-        [HttpGet("audio-detail")]
-        public async Task<IActionResult> GetAudioDetail([FromQuery] string recordingId)
-        {
-            var result = await _homeService.GetAudioDetailAsync(recordingId);
-
-            return Ok(new APIResponseBase
-            {
-                Success = true,
-                EndPointCode = "home.audio-detail",
-                Status = (int)HttpStatusCode.OK,
-                Value = result,
-                Message = "Get audio detail successfully."
-            });
-        }
     }
 }
