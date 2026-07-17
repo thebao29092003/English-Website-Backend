@@ -1,4 +1,4 @@
-﻿using CloudinaryDotNet;
+using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using English.Website.Api.Dtos.AIDtos.AzureSpeechDto;
 using English.Website.Api.Dtos.BackendPythonDtos;
@@ -8,6 +8,8 @@ using English.Website.Application.Services.IServices;
 using English.Website.Domain.DatabaseContext;
 using English.Website.Domain.Entities;
 using English.Website.Domain.Entities.AI;
+using Microsoft.AspNetCore.SignalR;
+using English.Website.Api.Hubs;
 
 namespace English.Website.Application.Services
 {
@@ -19,6 +21,7 @@ namespace English.Website.Application.Services
         private readonly IAssemblyAIService _assemblyAIService;
         private readonly IBackendPythonService _backendPythonService;
         private readonly string _webhookUrl;
+        private readonly IHubContext<AudioProcessingHub> _hubContext;
 
         public CloudinaryService(
             Cloudinary cloudinary,
@@ -26,7 +29,8 @@ namespace English.Website.Application.Services
             IAssemblyAIService assemblyAIService,
             IBackendPythonService backendPythonService,
             IConfiguration configuration,
-            IUserContextService userContextService)
+            IUserContextService userContextService,
+            IHubContext<AudioProcessingHub> hubContext)
         {
             _cloudinary = cloudinary;
             _dbContext = dbContext;
@@ -34,9 +38,10 @@ namespace English.Website.Application.Services
             _assemblyAIService = assemblyAIService;
             _backendPythonService = backendPythonService;
             _webhookUrl = configuration["WebHook:BackendPython:Url"]!;
+            _hubContext = hubContext;
         }
 
-        public async Task<string?> UploadFileAsync(UploadRequestDto requestDto)
+        public async Task<Guid?> UploadFileAsync(UploadRequestDto requestDto)
         {
             #region upload file
             const long MaxFileSize = 5 * 1024 * 1024; // 5 MB
@@ -139,6 +144,14 @@ namespace English.Website.Application.Services
 
                 await _dbContext.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+                // Notify via SignalR to user group
+                await _hubContext.Clients.Group(user.UserId.ToString().ToLowerInvariant()).SendAsync("ReceiveAudioStatus", new
+                {
+                    recordingId,
+                    status = "Submitted",
+                    message = "Audio successfully uploaded and submitted for grading."
+                });
             }
             catch (Exception ex)
             {
@@ -146,7 +159,24 @@ namespace English.Website.Application.Services
                 throw new BadRequestException($"Error saving to database: {ex.Message}");
             }
 
-            return transcriptId;
+            return recordingId;
+        }
+
+        public async Task<bool> DeleteFileAsync(string publicId)
+        {
+            if (string.IsNullOrEmpty(publicId))
+            {
+                return false;
+            }
+
+            var deleteParams = new DeletionParams(publicId)
+            {
+                ResourceType = ResourceType.Video
+            };
+
+            var deletionResult = await _cloudinary.DestroyAsync(deleteParams);
+
+            return deletionResult.Result == "ok";
         }
     }
 }

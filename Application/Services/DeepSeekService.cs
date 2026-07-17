@@ -1,4 +1,4 @@
-﻿using English.Website.Api.Dtos.AIDtos.DeepSeekDto;
+using English.Website.Api.Dtos.AIDtos.DeepSeekDto;
 using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Extend;
 using English.Website.Application.Services.IServices;
@@ -9,6 +9,9 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
+using English.Website.Api.Hubs;
 
 namespace English.Website.Application.Services
 {
@@ -18,16 +21,20 @@ namespace English.Website.Application.Services
         private readonly EnglishDBContext _englishDBContext;
         private readonly HttpClient _httpClient;
 
+        private readonly IHubContext<AudioProcessingHub> _hubContext;
+
         public DeepSeekService(
             IConfiguration configuration,
             HttpClient httpClient,
             IUserContextService userContextService,
-            EnglishDBContext englishDBContext
+            EnglishDBContext englishDBContext,
+            IHubContext<AudioProcessingHub> hubContext
         )
         {
             _httpClient = httpClient;
             _apiKey = configuration["AI:DeepSeekApiKey"]!;
             _englishDBContext = englishDBContext;
+            _hubContext = hubContext;
         }
 
         private HttpRequestMessage PrepareCallApi(string systemPrompt, string userPrompt, Guid userId)
@@ -216,6 +223,19 @@ namespace English.Website.Application.Services
 
                 await _englishDBContext.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+
+                await _hubContext.Clients.Group(userId.ToString().ToLowerInvariant()).SendAsync("ReceiveAudioStatus", new
+                {
+                    recordingId = deepSeekRequest.RecordingID,
+                    status = "Analysis_Completed",
+                    data = new
+                    {
+                        overallGrammarScore = mergedResultDto.GrammarAnalysis?.OverallGrammarScore,
+                        overallVocabScore = mergedResultDto.VocabularyAnalysis?.OverallVocabScore
+                    }
+                });
+
             }
             catch (Exception ex)
             {

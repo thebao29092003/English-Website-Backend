@@ -8,6 +8,8 @@ using English.Website.Domain.Entities.AI.AIModelAudio;
 using English.Website.Api.Dtos.AIDtos.DeepSeekDto; 
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using Microsoft.AspNetCore.SignalR;
+using English.Website.Api.Hubs;
 
 namespace English.Website.Application.Services
 {
@@ -19,12 +21,14 @@ namespace English.Website.Application.Services
         private readonly EnglishDBContext _englishDBContext;
         private readonly HttpClient _httpClient;
         private readonly IDeepSeekService _deepSeekService;
+        private readonly IHubContext<AudioProcessingHub> _hubContext;
 
         public AssemblyAIService(
             IConfiguration configuration,
             HttpClient httpClient,
             EnglishDBContext englishDBContext,
-            IDeepSeekService deepSeekService
+            IDeepSeekService deepSeekService,
+            IHubContext<AudioProcessingHub> hubContext
         )
         {
             _httpClient = httpClient;
@@ -33,6 +37,7 @@ namespace English.Website.Application.Services
             _webhookUrl = configuration["WebHook:AssemblyAI:Url"]!;
             _englishDBContext = englishDBContext;
             _deepSeekService = deepSeekService;
+            _hubContext = hubContext;
         }
 
         public async Task GetDataAssemblyAI(string transcriptId)
@@ -67,6 +72,19 @@ namespace English.Website.Application.Services
 
             await _englishDBContext.SaveChangesAsync();
 
+            // Notify via SignalR to user group
+            await _hubContext.Clients.Group(speechToText.UserId.ToString().ToLowerInvariant()).SendAsync("ReceiveAudioStatus", new
+            {
+                recordingId = speechToText.RecordingId,
+                status = "Fluency_Analyzed",
+                data = new
+                {
+                    fluencyScore = fluencyAnalysisResult.Score,
+                    confidenceScore = assemblyAiResult.Confidence,
+                    aiTranscript = transcriptResult
+                }
+            });
+
             if (speechToText.TypeAnalyse != TypeAnalyse.NOT && transcriptResult != null)
             {
                 var result = await _deepSeekService.CallDeepSeekApi(new TranscriptRequestDto
@@ -75,6 +93,7 @@ namespace English.Website.Application.Services
                     UserPrompt = transcriptResult,
                     AISpeechToTextId = speechToText.AISpeechToTextId,
                     UserId = speechToText.UserId,
+                    RecordingID = speechToText.RecordingId
                 });
             }
         }

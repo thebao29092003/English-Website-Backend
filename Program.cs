@@ -1,4 +1,5 @@
 using English.Website.Api.Extensions;
+using English.Website.Api.Hubs;
 using Hangfire;
 using Serilog;
 
@@ -37,5 +38,7 @@ app.UseAuthorization();
 app.UseHangfireDashboard();
 
 app.MapControllers();
+
+app.MapHub<AudioProcessingHub>("/hubs/audio-processing");
 
 app.Run();

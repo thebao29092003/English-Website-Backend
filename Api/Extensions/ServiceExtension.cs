@@ -141,6 +141,23 @@ namespace English.Website.Api.Extensions
 
                     options.Events = new JwtBearerEvents
                     {
+                        // SignalR WebSocket không thể gửi header Authorization,
+                        // nên client gửi token qua query string ?access_token=xxx
+                        // Event này chạy TRƯỚC khi JWT middleware xác thực,
+                        // giúp "chuyển" token từ query string vào context để middleware đọc được.
+                        OnMessageReceived = context =>
+                        {
+                            var accessToken = context.Request.Query["access_token"];
+                            var path = context.HttpContext.Request.Path;
+
+                            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                            {
+                                context.Token = accessToken;
+                            }
+
+                            return Task.CompletedTask;
+                        },
+
                         // Sự kiện OnTokenValidated chạy ngay sau khi token đã vượt qua các bước kiểm tra cơ bản ở trên
                         OnTokenValidated = async context =>
                         {
@@ -232,13 +249,13 @@ namespace English.Website.Api.Extensions
             services.AddScoped<ICloudinaryService, CloudinaryService>();
             services.AddScoped<AISpeechToTextService>();
             services.AddScoped<ICloudinaryService, CloudinaryService>();
-            services.AddScoped<HomeService>();
-            services.AddScoped<AudioDetailService>();
+            services.AddScoped<AudioService>();
         }
 
         private static void ServiceGeneric(IServiceCollection services, IConfiguration configuration)
         {
             services.AddControllers();
+            services.AddSignalR();
 
             services.AddEndpointsApiExplorer();
             services.AddSwaggerGen();
