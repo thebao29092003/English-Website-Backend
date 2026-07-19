@@ -16,6 +16,15 @@ namespace English.Website.Application.Services
         private readonly IAssemblyAIService _assemblyAIService;
         private readonly IHubContext<AudioProcessingHub> _hubContext;
 
+        // static giúp tất cả các instance của service trong cùng một tiến trình (process) dùng chung một dictionary.
+        //  Tại sao phải dùng ConcurrentDictionary thay vì Dictionary thường
+        // ConcurrentDictionary an toàn đa luồng (Thread-Safe): Lớp này được .NET tối ưu hóa để cho phép nhiều luồng
+        // cùng lúc thêm, sửa, xóa dữ liệu một cách an toàn
+        // điều quan trong ở đây là có thêm được key hay khong còn giá trị byte không quan trọng
+        // sao cho nó nhỏ nhất để tốn ít data là được
+        private static readonly ConcurrentDictionary<string, byte> _activeProcessing =
+            new ConcurrentDictionary<string, byte>();
+
         public AISpeechToTextService(
             EnglishDBContext dBContext,
             IBackendPythonService backendPythonService,
@@ -29,14 +38,6 @@ namespace English.Website.Application.Services
             _hubContext = hubContext;
         }
 
-        // static giúp tất cả các instance của service trong cùng một tiến trình (process) dùng chung một dictionary.
-        //  Tại sao phải dùng ConcurrentDictionary thay vì Dictionary thường
-        // ConcurrentDictionary an toàn đa luồng (Thread-Safe): Lớp này được .NET tối ưu hóa để cho phép nhiều luồng
-        // cùng lúc thêm, sửa, xóa dữ liệu một cách an toàn
-        // điều quan trong ở đây là có thêm được key hay khong còn giá trị byte không quan trọng
-        // sao cho nó nhỏ nhất để tốn ít data là được
-        private static readonly ConcurrentDictionary<string, byte> _activeProcessing =
-            new ConcurrentDictionary<string, byte>();
 
         public async Task Update(PythonPhonemeWebhookDto webhookData)
         {

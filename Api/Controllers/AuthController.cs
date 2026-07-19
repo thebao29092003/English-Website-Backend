@@ -66,7 +66,6 @@ namespace English.Website.Api.Controllers
         public async Task<IActionResult> RefreshToken()
         {
             var result = await _authService.RefreshToken();
-            Log.Information("result => {@result}", result);
             return Ok(new APIResponseBase
             {
                 Success = true,

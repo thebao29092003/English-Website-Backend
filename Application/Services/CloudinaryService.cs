@@ -57,7 +57,7 @@ namespace English.Website.Application.Services
                 throw new BadRequestException("File must smaller 5MB");
             }
 
-            var allowedExtensions = new[] { ".mp3", ".wav", ".m4a", ".aac", ".wma" };
+            var allowedExtensions = new[] { ".mp3",".aac", ".ogg", ".flac", ".alac", ".aiff", ".wav", ".m4a", ".webm"};
             var extension = Path.GetExtension(file.FileName)?.ToLowerInvariant();
             if (string.IsNullOrEmpty(extension) || !allowedExtensions.Contains(extension))
             {
