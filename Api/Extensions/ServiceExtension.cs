@@ -250,6 +250,7 @@ namespace English.Website.Api.Extensions
             services.AddScoped<AISpeechToTextService>();
             services.AddScoped<ICloudinaryService, CloudinaryService>();
             services.AddScoped<AudioService>();
+            services.AddScoped<StatisticService>();
         }
 
         private static void ServiceGeneric(IServiceCollection services, IConfiguration configuration)

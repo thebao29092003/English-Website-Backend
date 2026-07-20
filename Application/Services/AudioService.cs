@@ -48,16 +48,24 @@ namespace English.Website.Application.Services
                     SpeechToText = r.AISpeechToText == null ? null : new AISpeechToTextDto
                     {
                         AITranscript = r.AISpeechToText.AITranscript,
-                        OverallConfidence = r.AISpeechToText.OverallConfidence,
-                        FluencyScore = r.AISpeechToText.FluencyScore,
+                        OverallConfidence = r.AISpeechToText.OverallConfidence != null
+                            ? Math.Round(r.AISpeechToText.OverallConfidence.Value * 100)
+                            : null,
+                        FluencyScore = r.AISpeechToText.FluencyScore != null
+                            ? Math.Round(r.AISpeechToText.FluencyScore.Value)
+                            : null,
                         PronunciationScore = r.AISpeechToText.PronunciationScore != null
-                            ? r.AISpeechToText.PronunciationScore * 100
+                            ? Math.Round(r.AISpeechToText.PronunciationScore.Value * 100)
                             : null
                     },
                     Analysis = (r.AISpeechToText == null || r.AISpeechToText.AIAnalysis == null) ? null : new AIAnalysisDto
                     {
-                        OverallGrammarScore = r.AISpeechToText.AIAnalysis.OverallGrammarScore,
-                        OverallVocabScore = r.AISpeechToText.AIAnalysis.OverallVocabScore
+                        OverallGrammarScore = r.AISpeechToText.AIAnalysis.OverallGrammarScore != null
+                            ? Math.Round(r.AISpeechToText.AIAnalysis.OverallGrammarScore.Value)
+                            : null,
+                        OverallVocabScore = r.AISpeechToText.AIAnalysis.OverallVocabScore != null
+                            ? Math.Round(r.AISpeechToText.AIAnalysis.OverallVocabScore.Value)
+                            : null
                     }
                 })
                 .ToListAsync();
@@ -94,8 +102,12 @@ namespace English.Website.Application.Services
 
                 if (AIAnalysis != null)
                 {
-                    result.OverallGrammarScore = AIAnalysis.OverallGrammarScore;
-                    result.OverallVocabScore = AIAnalysis.OverallVocabScore;
+                    result.OverallGrammarScore = AIAnalysis.OverallGrammarScore != null
+                        ? Math.Round(AIAnalysis.OverallGrammarScore.Value)
+                        : null;
+                    result.OverallVocabScore = AIAnalysis.OverallVocabScore != null
+                        ? Math.Round(AIAnalysis.OverallVocabScore.Value)
+                        : null;
                     if (!string.IsNullOrEmpty(AIAnalysis.AnalysisContentJson))
                     {
                         try
@@ -109,9 +121,15 @@ namespace English.Website.Application.Services
                     }
                 }
                 result.AITranscript = recording.AISpeechToText.AITranscript;
-                result.OverallConfidence = recording.AISpeechToText.OverallConfidence;
-                result.FluencyScore = recording.AISpeechToText.FluencyScore;
-                result.PronunciationScore = recording.AISpeechToText.PronunciationScore;
+                result.OverallConfidence = recording.AISpeechToText.OverallConfidence != null
+                    ? Math.Round(recording.AISpeechToText.OverallConfidence.Value * 100)
+                    : null;
+                result.FluencyScore = recording.AISpeechToText.FluencyScore != null
+                    ? Math.Round(recording.AISpeechToText.FluencyScore.Value)
+                    : null;
+                result.PronunciationScore = recording.AISpeechToText.PronunciationScore != null
+                    ? Math.Round(recording.AISpeechToText.PronunciationScore.Value * 100)
+                    : null;
                 result.WordPerMinute = recording.AISpeechToText.WordPerMinute;
                 result.TypeAnalyse = recording.AISpeechToText.TypeAnalyse;
 
