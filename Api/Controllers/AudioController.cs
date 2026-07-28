@@ -1,6 +1,7 @@
 using System.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using English.Website.Application.Services;
 using whOperation.API.APIPayload;
 
@@ -9,6 +10,7 @@ namespace English.Website.Api.Controllers
     [Route("api/audio")]
     [ApiController]
     [Authorize]
+    [EnableRateLimiting("UserApiLimit")]
     public class AudioController : ControllerBase
     {
         private readonly AudioService _audioService;

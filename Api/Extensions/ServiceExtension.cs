@@ -8,6 +8,7 @@ using English.Website.Application.Services.IServices;
 using English.Website.Domain.Cores.Exceptions;
 using English.Website.Domain.DatabaseContext;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
@@ -18,6 +19,9 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
 using Serilog.Sinks.OpenTelemetry;
+using System.Security.Claims;
+using System.Threading.RateLimiting;
+using whOperation.API.APIPayload;
 
 namespace English.Website.Api.Extensions
 {
@@ -32,6 +36,8 @@ namespace English.Website.Api.Extensions
             ServiceHangfire(services, configuration);
 
             ServiceHttp(services);
+
+            ServiceRateLimiter(services, configuration);
 
             // register authentication
             ServiceAuth(services, configuration);
@@ -251,6 +257,7 @@ namespace English.Website.Api.Extensions
             services.AddScoped<ICloudinaryService, CloudinaryService>();
             services.AddScoped<AudioService>();
             services.AddScoped<StatisticService>();
+            services.AddScoped<ContactService>();
         }
 
         private static void ServiceGeneric(IServiceCollection services, IConfiguration configuration)
@@ -316,7 +323,70 @@ namespace English.Website.Api.Extensions
             // chịu trách nhiệm lắng nghe SQL Server và trực tiếp thực thi các tác vụ ngầm khi đến giờ 
             services.AddHangfireServer();
         }
+
+        private static void ServiceRateLimiter(IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddRateLimiter(options =>
+            {
+                // Xử lý khi request vượt quá Rate Limit -> Trả về HTTP 429 Too Many Requests
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+                options.OnRejected = async (context, cancellationToken) =>
+                {
+                    context.HttpContext.Response.ContentType = "application/json";
+
+                    string message = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter)
+                        ? $"Vui lòng thử lại sau {retryAfter.TotalSeconds} giây."
+                        : "Quá nhiều yêu cầu. Vui lòng thử lại sau.";
+
+                    var response = new APIResponseBase
+                    {
+                        Success = false,
+                        Status = StatusCodes.Status429TooManyRequests,
+                        Message = message,
+                        EndPointCode = "rate_limit_exceeded",
+                        Value = null
+                    };
+
+                    await context.HttpContext.Response.WriteAsJsonAsync(response, cancellationToken);
+                };
+
+                // Policy 1: API Công cộng (Login, Register, Contact, ForgetPassword) ──► Fixed Window + IP (Bảo vệ vòng ngoài)
+                options.AddPolicy("PublicApiLimit", httpContext =>
+                {
+                    var clientIp = httpContext.Request.Headers["CF-Connecting-IP"].FirstOrDefault() // 1. Ưu tiên Cloudflare (vì dùng proxy của Cloudflare)
+                                   ?? httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault() // 2. Dự phòng Proxy khác
+                                   ?? httpContext.Connection.RemoteIpAddress?.ToString() // 3. Dự phòng chạy Local trực tiếp
+                                   ?? "unknown_ip";
+
+                    return RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: clientIp,
+                        factory: _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 10, // Giới hạn tối đa 10 request
+                            Window = TimeSpan.FromMinutes(1), // Trong khoảng thời gian 1 phút
+                            QueueLimit = 0 // Không xếp hàng, từ chối ngay lập tức khi vượt quá
+                        }
+                    );
+                });
+
+                // Policy 2: API Cần Đăng Nhập ──► Sliding Window + UserId qua Token (60 requests/phút, chia 3 đoạn)
+                options.AddPolicy("UserApiLimit", httpContext =>
+                {
+                    var userId = httpContext.User.FindFirstValue("UserId") ?? "unauthorized_user";
+
+                    return RateLimitPartition.GetSlidingWindowLimiter(
+                        partitionKey: userId,
+                        factory: _ => new SlidingWindowRateLimiterOptions
+                        {
+                            PermitLimit = 60,                 // Tối đa 60 request
+                            Window = TimeSpan.FromMinutes(1), // Trong khoảng thời gian 1 phút
+                            SegmentsPerWindow = 3,            // Phân thành 3 đoạn (mỗi đoạn 20 giây)
+                            QueueLimit = 0                    // Không xếp hàng, từ chối ngay lập tức khi vượt quá
+                        }
+                    );
+                });
+            });
+        }
     }
-
-
 }

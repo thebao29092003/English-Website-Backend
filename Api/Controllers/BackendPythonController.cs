@@ -31,7 +31,7 @@ namespace English.Website.Api.Controllers
             }
 
             await _aiSpeechToTextService.Update(webhookData);
-            // TÙY TRỌN ĐẨY SignalR (dùng khi có frontend)
+
             return StatusCode(200);
         }
     }

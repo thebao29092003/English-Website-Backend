@@ -1,8 +1,9 @@
-﻿using English.Website.Api.Dtos.AuthDtos;
+using English.Website.Api.Dtos.AuthDtos;
 using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Net;
 using whOperation.API.APIPayload;
 
@@ -11,6 +12,7 @@ namespace English.Website.Api.Controllers
 
     [Route("api/forget-password")]
     [ApiController]
+    [EnableRateLimiting("PublicApiLimit")]
     public class ForgetPasswordController : ControllerBase
     {
         private readonly ForgetPasswordService _forgetPasswordService;

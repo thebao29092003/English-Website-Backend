@@ -1,8 +1,9 @@
-﻿using English.Website.Api.Dtos.AIDtos.DeepSeekDto;
+using English.Website.Api.Dtos.AIDtos.DeepSeekDto;
 using English.Website.Api.Dtos.CloudinaryDtos;
 using English.Website.Application.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Net;
 using whOperation.API.APIPayload;
 
@@ -20,6 +21,7 @@ namespace English.Website.Api.Controllers
 
         [HttpPost("upload")]
         [Authorize]
+        [EnableRateLimiting("UserApiLimit")]
         public async Task<IActionResult> UploadAudio([FromForm] UploadRequestDto requestDto)
         {
             var result = await _cloudinaryService.UploadFileAsync(requestDto);

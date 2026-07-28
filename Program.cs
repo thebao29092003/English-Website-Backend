@@ -35,6 +35,8 @@ app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseRateLimiter();
+
 app.UseHangfireDashboard();
 
 app.MapControllers();
