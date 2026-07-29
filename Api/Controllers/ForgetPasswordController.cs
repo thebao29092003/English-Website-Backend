@@ -1,7 +1,5 @@
 using English.Website.Api.Dtos.AuthDtos;
-using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Net;
@@ -22,9 +20,13 @@ namespace English.Website.Api.Controllers
         }
 
         [HttpGet("send-otp")]
-        public async Task<IActionResult> SendRegisterOtp([FromQuery] string email)
+        public async Task<IActionResult> SendRegisterOtp([FromQuery] string email, [FromQuery] string? turnstileToken = null)
         {
-            await _forgetPasswordService.SendResetPasswordOtp(email);
+            var remoteIp = HttpContext.Request.Headers["CF-Connecting-IP"].FirstOrDefault()
+                           ?? HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                           ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            await _forgetPasswordService.SendResetPasswordOtp(email, turnstileToken, remoteIp);
             return Ok(new APIResponseBase
             {
                 Success = true,

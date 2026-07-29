@@ -23,7 +23,11 @@ namespace English.Website.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateContact([FromBody] CreateContactDto dto)
         {
-            await _contactService.CreateContactAsync(dto);
+            var remoteIp = HttpContext.Request.Headers["CF-Connecting-IP"].FirstOrDefault()
+                           ?? HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                           ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            await _contactService.CreateContactAsync(dto, remoteIp);
 
             return Ok(new APIResponseBase
             {

@@ -15,22 +15,35 @@ namespace English.Website.Application.Services
         private readonly EnglishDBContext _context;
         private readonly IEmailService _emailService;
         private readonly IMemoryCache _memoryCache;
+        private readonly ITurnstileService _turnstileService;
 
-        public ForgetPasswordService(EnglishDBContext context, IEmailService emailService, IMemoryCache memoryCache)
+        public ForgetPasswordService(
+            EnglishDBContext context,
+            IEmailService emailService,
+            IMemoryCache memoryCache,
+            ITurnstileService turnstileService)
         {
             _context = context;
             _emailService = emailService;
             _memoryCache = memoryCache;
+            _turnstileService = turnstileService;
         }
 
-        public async Task SendResetPasswordOtp(string email)
+        public async Task SendResetPasswordOtp(string email, string? turnstileToken = null, string? remoteIp = null)
         {
+            // 0. Xác thực Turnstile CAPTCHA
+            var isTurnstileValid = await _turnstileService.VerifyTokenAsync(turnstileToken, remoteIp);
+            if (!isTurnstileValid)
+            {
+                throw new BadRequestException("Invalid or expired CAPTCHA");
+            }
+
             // 1. Kiểm tra xem Email này có tồn tại trong hệ thống chưa
             var user = 
                 await _context.User.FirstOrDefaultAsync(u => u.Username == email) 
                 ?? throw new BadRequestException("Email not exist.");
 
-            if(!user.IsActive)
+            if (!user.IsActive)
             {
                 throw new BadRequestException("Account is blocked. Plase contact admin via email");
             }

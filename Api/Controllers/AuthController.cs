@@ -22,9 +22,13 @@ namespace English.Website.Api.Controllers
 
         [HttpGet("register/send-otp")]
         [EnableRateLimiting("PublicApiLimit")]
-        public async Task<IActionResult> SendRegisterOtp([FromQuery] string email)
+        public async Task<IActionResult> SendRegisterOtp([FromQuery] string email, [FromQuery] string? turnstileToken = null)
         {
-            await _authService.SendRegisterOtp(email);
+            var remoteIp = HttpContext.Request.Headers["CF-Connecting-IP"].FirstOrDefault()
+                           ?? HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                           ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            await _authService.SendRegisterOtp(email, turnstileToken, remoteIp);
             return Ok(new APIResponseBase
             {
                 Success = true,

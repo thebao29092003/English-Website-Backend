@@ -23,6 +23,7 @@ namespace English.Website.Application.Services
         private readonly IEmailService _emailService;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IUserContextService _useContext;
+        private readonly ITurnstileService _turnstileService;
 
         public AuthService(
             EnglishDBContext context,
@@ -30,7 +31,8 @@ namespace English.Website.Application.Services
             IMemoryCache memoryCache,
             IEmailService emailService,
             IHttpContextAccessor httpContextAccessor,
-            IUserContextService useContext
+            IUserContextService useContext,
+            ITurnstileService turnstileService
         )
         {
             _context = context;
@@ -39,6 +41,7 @@ namespace English.Website.Application.Services
             _emailService = emailService;
             _httpContextAccessor = httpContextAccessor;
             _useContext = useContext;
+            _turnstileService = turnstileService;
         }
 
         private void SetRefreshTokenInCookie(string refreshToken)
@@ -118,8 +121,14 @@ namespace English.Website.Application.Services
             return refreshToken;
         }
 
-        public async Task SendRegisterOtp(string toEmail)
+        public async Task SendRegisterOtp(string toEmail, string? turnstileToken = null, string? remoteIp = null)
         {
+            var isTurnstileValid = await _turnstileService.VerifyTokenAsync(turnstileToken, remoteIp);
+            if (!isTurnstileValid)
+            {
+                throw new BadRequestException("Invalid or expired CAPTCHA");
+            }
+
             var isExistingUser = await _context.User.AnyAsync(u => u.Username == toEmail);
             if (isExistingUser)
             {

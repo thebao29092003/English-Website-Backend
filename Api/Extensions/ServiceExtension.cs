@@ -242,6 +242,7 @@ namespace English.Website.Api.Extensions
             services.AddHttpClient<IDeepSeekService, DeepSeekService>();
             services.AddHttpClient<IAssemblyAIService, AssemblyAIService>();
             services.AddHttpClient<IBackendPythonService, BackendPythonService>();
+            services.AddHttpClient<ITurnstileService, TurnstileService>();
         }
 
         private static void ServiceInternal(IServiceCollection services)

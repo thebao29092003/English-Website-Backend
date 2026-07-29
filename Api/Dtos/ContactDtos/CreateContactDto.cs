@@ -19,5 +19,7 @@ namespace English.Website.Api.Dtos.ContactDtos
 
         [Required(ErrorMessage = "Vui lòng nhập nội dung liên hệ")]
         public string Content { get; set; } = string.Empty;
+
+        public string? TurnstileToken { get; set; }
     }
 }

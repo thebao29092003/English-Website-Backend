@@ -1,5 +1,6 @@
 using English.Website.Api.Dtos.ContactDtos;
 using English.Website.Api.Extensions.Helpers;
+using English.Website.Application.Services.IServices;
 using English.Website.Domain.DatabaseContext;
 using English.Website.Domain.Entities;
 
@@ -8,14 +9,22 @@ namespace English.Website.Application.Services
     public class ContactService
     {
         private readonly EnglishDBContext _dbContext;
+        private readonly ITurnstileService _turnstileService;
 
-        public ContactService(EnglishDBContext dbContext)
+        public ContactService(EnglishDBContext dbContext, ITurnstileService turnstileService)
         {
             _dbContext = dbContext;
+            _turnstileService = turnstileService;
         }
 
-        public async Task CreateContactAsync(CreateContactDto dto)
+        public async Task CreateContactAsync(CreateContactDto dto, string? remoteIp = null)
         {
+            var isTurnstileValid = await _turnstileService.VerifyTokenAsync(dto.TurnstileToken, remoteIp);
+            if (!isTurnstileValid)
+            {
+                throw new BadRequestException("Invalid or expired CAPTCHA.");
+            }
+
             if (string.IsNullOrWhiteSpace(dto.FullName) ||
                 string.IsNullOrWhiteSpace(dto.Email) ||
                 string.IsNullOrWhiteSpace(dto.PhoneNumber) ||
