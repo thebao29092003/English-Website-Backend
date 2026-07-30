@@ -13,8 +13,8 @@ namespace English.Website.Application.Services
         public TurnstileService(HttpClient httpClient, IConfiguration configuration)
         {
             _httpClient = httpClient;
-            _secretKey = configuration["Cloudfare:TurnStileKey"] ?? string.Empty;
-            _verifyUrl = configuration["Cloudfare:VerifyUrl"] ?? "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+            _secretKey = configuration["Cloudfare:TurnStileKey"]
+            _verifyUrl = configuration["Cloudfare:VerifyUrl"]
         }
 
         public async Task<bool> VerifyTokenAsync(string? token, string? remoteIp = null)
