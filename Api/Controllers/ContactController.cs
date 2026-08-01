@@ -4,7 +4,7 @@ using English.Website.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using whOperation.API.APIPayload;
+using englishWebSite.API.APIPayload;
 
 namespace English.Website.Api.Controllers
 {
@@ -23,9 +23,7 @@ namespace English.Website.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateContact([FromBody] CreateContactDto dto)
         {
-            var remoteIp = HttpContext.Request.Headers["CF-Connecting-IP"].FirstOrDefault()
-                           ?? HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
-                           ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+            var remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown_ip";
 
             await _contactService.CreateContactAsync(dto, remoteIp);
 

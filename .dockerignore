@@ -1,0 +1,29 @@
+# Build outputs
+**/[bB]in/
+**/[oO]bj/
+
+# IDE and Editor files
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+
+# Project documentation & scratch logs
+explainDockerFile.md
+Dockerfile*
+docker-compose*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Local development configuration
+appsettings.Development.json

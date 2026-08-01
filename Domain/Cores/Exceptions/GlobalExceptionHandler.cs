@@ -1,7 +1,7 @@
 using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services.IServices;
 using Microsoft.AspNetCore.Diagnostics;
-using whOperation.API.APIPayload;
+using englishWebSite.API.APIPayload;
 
 /*
 IExceptionHandler bắt buộc phải là Singleton (vì nó chạy ở tầng Middleware ngoài cùng).

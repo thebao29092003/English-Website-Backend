@@ -8,7 +8,6 @@ using English.Website.Application.Services.IServices;
 using English.Website.Domain.Cores.Exceptions;
 using English.Website.Domain.DatabaseContext;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
@@ -21,7 +20,8 @@ using Serilog;
 using Serilog.Sinks.OpenTelemetry;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
-using whOperation.API.APIPayload;
+using englishWebSite.API.APIPayload;
+using Microsoft.AspNetCore.HttpOverrides;
 
 namespace English.Website.Api.Extensions
 {
@@ -48,6 +48,21 @@ namespace English.Website.Api.Extensions
             services.AddSingleton(new Cloudinary(CLOUDINARY_URL));
 
             ServiceSeriLogGrafata(services, configuration);
+
+            services.AddHealthChecks();
+
+            ServiceGetReadIP(services);
+
+        }
+
+        private static void ServiceGetReadIP(IServiceCollection services)
+        {
+            services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                options.KnownNetworks.Clear(); // Xóa danh sách mạng đã biết để chấp nhận tất cả các mạng
+                options.KnownProxies.Clear();  // Xóa danh sách proxy đã biết để chấp nhận tất cả các proxy
+            });
         }
 
         private static void ServiceSeriLogGrafata(IServiceCollection services, IConfiguration configuration)
@@ -255,7 +270,6 @@ namespace English.Website.Api.Extensions
             services.AddScoped<IUserContextService, UserContextService>();
             services.AddScoped<ICloudinaryService, CloudinaryService>();
             services.AddScoped<AISpeechToTextService>();
-            services.AddScoped<ICloudinaryService, CloudinaryService>();
             services.AddScoped<AudioService>();
             services.AddScoped<StatisticService>();
             services.AddScoped<ContactService>();
@@ -271,7 +285,7 @@ namespace English.Website.Api.Extensions
 
             // 1. Đăng ký DbContext
             services.AddDbContext<EnglishDBContext>(options =>
-                options.UseSqlServer(configuration.GetConnectionString("englistWebsite")));
+                options.UseSqlServer(configuration.GetConnectionString("EnglistWebsite")));
 
             // 3. Đăng ký AutoMapper
             // cfg => { } để viết riêng map thôi mình có file riêng rồi nên không cần
@@ -311,7 +325,7 @@ namespace English.Website.Api.Extensions
                 .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
                 .UseSimpleAssemblyNameTypeSerializer()
                 .UseRecommendedSerializerSettings()
-                .UseSqlServerStorage(configuration.GetConnectionString("englistWebsite"), new SqlServerStorageOptions
+                .UseSqlServerStorage(configuration.GetConnectionString("EnglistWebsite"), new SqlServerStorageOptions
                 {
                     CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
                     SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
@@ -355,10 +369,7 @@ namespace English.Website.Api.Extensions
                 // Policy 1: API Công cộng (Login, Register, Contact, ForgetPassword) ──► Fixed Window + IP (Bảo vệ vòng ngoài)
                 options.AddPolicy("PublicApiLimit", httpContext =>
                 {
-                    var clientIp = httpContext.Request.Headers["CF-Connecting-IP"].FirstOrDefault() // 1. Ưu tiên Cloudflare (vì dùng proxy của Cloudflare)
-                                   ?? httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault() // 2. Dự phòng Proxy khác
-                                   ?? httpContext.Connection.RemoteIpAddress?.ToString() // 3. Dự phòng chạy Local trực tiếp
-                                   ?? "unknown_ip";
+                    var clientIp = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown_ip";
 
                     return RateLimitPartition.GetFixedWindowLimiter(
                         partitionKey: clientIp,

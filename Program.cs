@@ -1,12 +1,17 @@
 using English.Website.Api.Extensions;
 using English.Website.Api.Hubs;
 using Hangfire;
+using Microsoft.Extensions.Configuration;
 using Serilog;
 
 
 var builder = WebApplication.CreateBuilder(args);
+
 var configuration = builder.Configuration;
 var services = builder.Services;
+
+// Đọc Docker Secrets từ thư mục /run/secrets (nếu ứng dụng chạy trong Docker với Docker Secrets)
+configuration.AddKeyPerFile("/run/secrets", optional: true);
 
 // register services + automapper
 ServiceExtension.AddServices(services, configuration);
@@ -43,4 +48,7 @@ app.MapControllers();
 
 app.MapHub<AudioProcessingHub>("/hubs/audio-processing");
 
+app.MapHealthChecks("/health")
+    .AllowAnonymous()
+    .DisableRateLimiting();
 app.Run();
