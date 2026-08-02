@@ -1,6 +1,8 @@
 using English.Website.Api.Extensions;
 using English.Website.Api.Hubs;
+using English.Website.Domain.DatabaseContext;
 using Hangfire;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Serilog;
 
@@ -20,6 +22,13 @@ ServiceExtension.AddServices(services, configuration);
 builder.Host.UseSerilog();
 
 var app = builder.Build();
+
+// 👇 TỰ ĐỘNG KHỞI TẠO DATABASE & MIGRATION
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<EnglishDBContext>();
+    await dbContext.Database.MigrateAsync();
+}
 
 // 👇 KÍCH HOẠT MIDDLEWARE BẮT LỖI TOÀN CỤC (Phải đặt ở dòng đầu tiên của Pipeline)
 app.UseExceptionHandler();
