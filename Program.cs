@@ -26,8 +26,15 @@ var app = builder.Build();
 // 👇 TỰ ĐỘNG KHỞI TẠO DATABASE & MIGRATION
 using (var scope = app.Services.CreateScope())
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<EnglishDBContext>();
-    await dbContext.Database.MigrateAsync();
+    try
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<EnglishDBContext>();
+        await dbContext.Database.MigrateAsync();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Lỗi khi khởi tạo database: {ex.Message}");
+    }
 }
 
 // 👇 KÍCH HOẠT MIDDLEWARE BẮT LỖI TOÀN CỤC (Phải đặt ở dòng đầu tiên của Pipeline)

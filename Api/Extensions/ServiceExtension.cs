@@ -73,6 +73,7 @@ namespace English.Website.Api.Extensions
                 .MinimumLevel.Information()
                 .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
                 .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
+                .MinimumLevel.Override("System.Net.Http.HttpClient", Serilog.Events.LogEventLevel.Warning)
                 .WriteTo.Console() // Ghi log ra màn hình Console local bằng Serilog
                 .WriteTo.OpenTelemetry(options =>
                 {
