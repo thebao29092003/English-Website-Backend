@@ -92,7 +92,7 @@ namespace English.Website.Application.Services
                     data = new
                     {
                         fluencyScore = fluencyAnalysisResult.Score,
-                        confidenceScore = assemblyAiResult.Confidence,
+                        confidenceScore = assemblyAiResult?.Confidence == null ? 0 : Math.Round((decimal)assemblyAiResult.Confidence * 100),
                         aiTranscript = transcriptResult
                     }
                 });
@@ -278,7 +278,7 @@ namespace English.Website.Application.Services
             // Giới hạn điểm số nằm trong thang điểm từ 10 đến 100
             finalScore = Math.Clamp(finalScore, 10.0, 100.0);
 
-            result.Score = Math.Round(finalScore, 1);
+            result.Score = Math.Round(finalScore);
             return result;
         }
     }
