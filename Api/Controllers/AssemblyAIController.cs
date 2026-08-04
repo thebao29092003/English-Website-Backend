@@ -31,7 +31,7 @@ namespace English.Website.Api.Controllers
             if (!Request.Headers.TryGetValue("X-Webhook-Secret", out var receivedSecret) ||
                 receivedSecret != _webhookAuth)
             {
-                return StatusCode(500);
+                return StatusCode(403);
             }
 
             if (webhookData.Status == "completed")
