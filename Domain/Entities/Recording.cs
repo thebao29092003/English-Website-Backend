@@ -1,4 +1,4 @@
-﻿using English.Website.Domain.Entities.AI;
+using English.Website.Domain.Entities.AI;
 using System.ComponentModel.DataAnnotations;
 
 namespace English.Website.Domain.Entities
@@ -11,11 +11,13 @@ namespace English.Website.Domain.Entities
         [Required]
         public Guid UserId { get; set; }
 
-        [Required]
-        public string CloudinaryPublicId { get; set; } = null!; // Bắt buộc để gọi API xóa file trên Cloudinary sau này
+        public string? CloudinaryPublicId { get; set; }
 
-        [Required]
-        public string Url { get; set; } = null!; // Đường dẫn file dạng secure_url của Cloudinary
+        public string? Url { get; set; }
+
+        public bool IsDeleted { get; set; } = false;
+
+        public DateTime? DeletedAt { get; set; }
 
         [Required]
         public string FileName { get; set; } = null!; // Tên file gốc (ví dụ: "speaking_task1.wav")

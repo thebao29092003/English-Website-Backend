@@ -1,4 +1,4 @@
-﻿using English.Website.Api.Dtos.AIDtos.DeepSeekDto;
+using English.Website.Api.Dtos.AIDtos.DeepSeekDto;
 using English.Website.Api.Dtos.CloudinaryDtos;
 
 namespace English.Website.Application.Services.IServices
@@ -6,6 +6,7 @@ namespace English.Website.Application.Services.IServices
 
     public interface ICloudinaryService
     {
-        Task<string?> UploadFileAsync(UploadRequestDto requestDto);
+        Task<Guid?> UploadFileAsync(UploadRequestDto requestDto);
+        Task<bool> DeleteFileAsync(string publicId);
     }
 }

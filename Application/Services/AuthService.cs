@@ -1,4 +1,4 @@
-﻿using English.Website.Api.Dtos.AuthDtos;
+using English.Website.Api.Dtos.AuthDtos;
 using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services.IServices;
 using English.Website.Domain.DatabaseContext;
@@ -23,6 +23,7 @@ namespace English.Website.Application.Services
         private readonly IEmailService _emailService;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IUserContextService _useContext;
+        private readonly ITurnstileService _turnstileService;
 
         public AuthService(
             EnglishDBContext context,
@@ -30,7 +31,8 @@ namespace English.Website.Application.Services
             IMemoryCache memoryCache,
             IEmailService emailService,
             IHttpContextAccessor httpContextAccessor,
-            IUserContextService useContext
+            IUserContextService useContext,
+            ITurnstileService turnstileService
         )
         {
             _context = context;
@@ -39,6 +41,7 @@ namespace English.Website.Application.Services
             _emailService = emailService;
             _httpContextAccessor = httpContextAccessor;
             _useContext = useContext;
+            _turnstileService = turnstileService;
         }
 
         private void SetRefreshTokenInCookie(string refreshToken)
@@ -118,8 +121,14 @@ namespace English.Website.Application.Services
             return refreshToken;
         }
 
-        public async Task SendRegisterOtp(string toEmail)
+        public async Task SendRegisterOtp(string toEmail, string? turnstileToken = null, string? remoteIp = null)
         {
+            var isTurnstileValid = await _turnstileService.VerifyTokenAsync(turnstileToken, remoteIp);
+            if (!isTurnstileValid)
+            {
+                throw new BadRequestException("Invalid or expired CAPTCHA");
+            }
+
             var isExistingUser = await _context.User.AnyAsync(u => u.Username == toEmail);
             if (isExistingUser)
             {
@@ -132,11 +141,22 @@ namespace English.Website.Application.Services
             string cacheKey = $"reg-otp:{toEmail}";
             _memoryCache.Set(cacheKey, otp, TimeSpan.FromMinutes(5));
 
-            string subject = "Mã xác nhận đăng ký tài khoản - English Website";
-            string body = $"<h3>Chào mừng bạn đến với English Website!</h3>" +
-                     $"<p>Mã OTP của bạn là: <strong>{otp}</strong></p>" +
-                     $"<p>Mã này có hiệu lực trong vòng 5 phút. Vui lòng tuyệt đối không chia sẻ mã này với bất kỳ ai.</p>";
-            await _emailService.SendEmailAsync(toEmail, subject, body);
+            string subject = "Mã xác nhận đăng ký tài khoản - Engsteps";
+            string title = "Xác Thực Đăng Ký Tài Khoản";
+            string content = $@"
+                <p style=""color: #cbd5e1; font-size: 15px; margin-bottom: 20px;"">
+                    Chào mừng bạn đến với <strong>Engsteps</strong>! Cảm ơn bạn đã đăng ký tài khoản. Dưới đây là mã OTP xác thực của bạn:
+                </p>
+                <div style=""text-align: center; margin: 28px 0;"">
+                    <span style=""display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #d946ef 100%); color: #ffffff; font-size: 32px; font-weight: 800; letter-spacing: 6px; padding: 14px 28px; border-radius: 12px; box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);"">
+                        {otp}
+                    </span>
+                </div>
+                <p style=""color: #94a3b8; font-size: 13px; text-align: center; margin: 0;"">
+                    Mã này có hiệu lực trong vòng <strong>5 phút</strong>. Vui lòng tuyệt đối không chia sẻ mã này với bất kỳ ai.
+                </p>";
+
+            await _emailService.SendTemplatedEmailAsync(toEmail, subject, title, content);
         }
 
         private async Task<TokenResponseDto> CreateTokenResponse(User user)

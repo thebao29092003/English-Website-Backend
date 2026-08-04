@@ -1,4 +1,5 @@
-﻿using English.Website.Application.Services.IServices;
+using English.Website.Api.Extensions.Helpers;
+using English.Website.Application.Services.IServices;
 using System.Net;
 using System.Net.Mail;
 
@@ -30,7 +31,7 @@ namespace English.Website.Application.Services
 
             var mailMessage = new MailMessage
             {
-                From = new MailAddress(senderEmail!, "English Website AI"),
+                From = new MailAddress(senderEmail!, "Engsteps AI"),
                 Subject = subject,
                 Body = body,
                 IsBodyHtml = true
@@ -39,7 +40,12 @@ namespace English.Website.Application.Services
             mailMessage.To.Add(toEmail);
 
             await client.SendMailAsync(mailMessage);
+        }
 
+        public async Task SendTemplatedEmailAsync(string toEmail, string subject, string title, string content)
+        {
+            string htmlBody = EmailTemplateHelper.BuildHtmlTemplate(title, content);
+            await SendEmailAsync(toEmail, subject, htmlBody);
         }
     }
 }

@@ -1,10 +1,11 @@
-﻿using English.Website.Api.Dtos.AuthDtos;
+using English.Website.Api.Dtos.AuthDtos;
 using English.Website.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Serilog;
 using System.Net;
-using whOperation.API.APIPayload;
+using englishWebSite.API.APIPayload;
 
 namespace English.Website.Api.Controllers
 {
@@ -20,9 +21,12 @@ namespace English.Website.Api.Controllers
         }
 
         [HttpGet("register/send-otp")]
-        public async Task<IActionResult> SendRegisterOtp([FromQuery] string email)
+        [EnableRateLimiting("PublicApiLimit")]
+        public async Task<IActionResult> SendRegisterOtp([FromQuery] string email, [FromQuery] string? turnstileToken = null)
         {
-            await _authService.SendRegisterOtp(email);
+            var remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown_ip";
+
+            await _authService.SendRegisterOtp(email, turnstileToken, remoteIp);
             return Ok(new APIResponseBase
             {
                 Success = true,
@@ -34,6 +38,7 @@ namespace English.Website.Api.Controllers
         }
 
         [HttpPost("register")]
+        [EnableRateLimiting("PublicApiLimit")]
         public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
         {
             await _authService.Register(registerDto);
@@ -48,6 +53,7 @@ namespace English.Website.Api.Controllers
         }
 
         [HttpPost("login")]
+        [EnableRateLimiting("PublicApiLimit")]
         public async Task<IActionResult> Login([FromBody] UserDto userDto)
         {
             var result = await _authService.Login(userDto);
@@ -63,10 +69,10 @@ namespace English.Website.Api.Controllers
         }
 
         [HttpPost("refresh-token")]
+        [EnableRateLimiting("PublicApiLimit")]
         public async Task<IActionResult> RefreshToken()
         {
             var result = await _authService.RefreshToken();
-            Log.Information("result => {@result}", result);
             return Ok(new APIResponseBase
             {
                 Success = true,
@@ -79,6 +85,7 @@ namespace English.Website.Api.Controllers
 
         [HttpPost("logout")]
         [Authorize]
+        [EnableRateLimiting("UserApiLimit")]
         public async Task<IActionResult> Logout()
         {
             await _authService.Logout();
@@ -93,22 +100,9 @@ namespace English.Website.Api.Controllers
             });
         }
 
-        [HttpGet]
-        [Authorize]
-        public IActionResult TestAuth()
-        {
-            return Ok(new APIResponseBase
-            {
-                Success = true,
-                EndPointCode = "auth.allApiGet",
-                Status = (int)HttpStatusCode.OK,
-                Value = null,
-                Message = "You are authorized to access this endpoint."
-            });
-        }
-
         [HttpPut("change-is-active")]
         [Authorize(Roles = "ADMIN")]
+        [EnableRateLimiting("UserApiLimit")]
         public async Task<IActionResult> UpdateUserIsActive([FromQuery] string userId)
         {
             await _authService.UpdateUserStatusAsync(userId);

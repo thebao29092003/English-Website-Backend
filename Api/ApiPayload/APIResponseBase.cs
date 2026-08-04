@@ -1,4 +1,4 @@
-﻿namespace whOperation.API.APIPayload
+﻿namespace englishWebSite.API.APIPayload
 {
     /// <summary>
     /// Base class for API responses.

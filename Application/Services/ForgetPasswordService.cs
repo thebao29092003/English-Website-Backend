@@ -1,4 +1,4 @@
-﻿using English.Website.Api.Dtos.AuthDtos;
+using English.Website.Api.Dtos.AuthDtos;
 using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services.IServices;
 using English.Website.Domain.DatabaseContext;
@@ -15,22 +15,35 @@ namespace English.Website.Application.Services
         private readonly EnglishDBContext _context;
         private readonly IEmailService _emailService;
         private readonly IMemoryCache _memoryCache;
+        private readonly ITurnstileService _turnstileService;
 
-        public ForgetPasswordService(EnglishDBContext context, IEmailService emailService, IMemoryCache memoryCache)
+        public ForgetPasswordService(
+            EnglishDBContext context,
+            IEmailService emailService,
+            IMemoryCache memoryCache,
+            ITurnstileService turnstileService)
         {
             _context = context;
             _emailService = emailService;
             _memoryCache = memoryCache;
+            _turnstileService = turnstileService;
         }
 
-        public async Task SendResetPasswordOtp(string email)
+        public async Task SendResetPasswordOtp(string email, string? turnstileToken = null, string? remoteIp = null)
         {
+            // 0. Xác thực Turnstile CAPTCHA
+            var isTurnstileValid = await _turnstileService.VerifyTokenAsync(turnstileToken, remoteIp);
+            if (!isTurnstileValid)
+            {
+                throw new BadRequestException("Invalid or expired CAPTCHA");
+            }
+
             // 1. Kiểm tra xem Email này có tồn tại trong hệ thống chưa
             var user = 
                 await _context.User.FirstOrDefaultAsync(u => u.Username == email) 
                 ?? throw new BadRequestException("Email not exist.");
 
-            if(!user.IsActive)
+            if (!user.IsActive)
             {
                 throw new BadRequestException("Account is blocked. Plase contact admin via email");
             }
@@ -43,12 +56,22 @@ namespace English.Website.Application.Services
             _memoryCache.Set(cacheKey, otp, TimeSpan.FromMinutes(5));
 
             // 4. Gửi email khôi phục mật khẩu
-            string subject = "Yêu cầu khôi phục mật khẩu - English Website";
-            string body = $"<h3>Yêu cầu khôi phục mật khẩu tài khoản</h3>" +
-                          $"<p>Mã OTP đặt lại mật khẩu của bạn là: <strong>{otp}</strong></p>" +
-                          $"<p>Mã này có hiệu lực trong vòng 5 phút. Nếu không phải bạn yêu cầu, vui lòng đổi mật khẩu tài khoản ngay lập tức.</p>";
+            string subject = "Yêu cầu khôi phục mật khẩu - Engsteps";
+            string title = "Khôi Phục Mật Khẩu Tài Khoản";
+            string content = $@"
+                <p style=""color: #cbd5e1; font-size: 15px; margin-bottom: 20px;"">
+                    Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản <strong>Engsteps</strong> của bạn. Dưới đây là mã OTP xác nhận:
+                </p>
+                <div style=""text-align: center; margin: 28px 0;"">
+                    <span style=""display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #d946ef 100%); color: #ffffff; font-size: 32px; font-weight: 800; letter-spacing: 6px; padding: 14px 28px; border-radius: 12px; box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);"">
+                        {otp}
+                    </span>
+                </div>
+                <p style=""color: #94a3b8; font-size: 13px; text-align: center; margin: 0;"">
+                    Mã này có hiệu lực trong vòng <strong>5 phút</strong>. Vui lòng tuyệt đối không chia sẻ mã này với bất kỳ ai.
+                </p>";
 
-            await _emailService.SendEmailAsync(email, subject, body);
+            await _emailService.SendTemplatedEmailAsync(email, subject, title, content);
         }
 
         public async Task ResetPasswordWithOtp(ResetPasswordRequestDto dto)

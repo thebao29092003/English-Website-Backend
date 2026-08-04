@@ -1,4 +1,4 @@
-﻿using English.Website.Domain.Entities;
+using English.Website.Domain.Entities;
 using English.Website.Domain.Entities.AI;
 using English.Website.Domain.Entities.AI.AIModelAudio;
 using English.Website.Domain.Entities.AI.AIModelText;
@@ -22,6 +22,7 @@ namespace English.Website.Domain.DatabaseContext
         public DbSet<AIModelAudio> AIModelAudio { get; set; }
         public DbSet<AudioUsage> AudioUsage { get; set; }
         public DbSet<AISpeechToText> AISpeechToText { get; set; }
+        public DbSet<Contact> Contact { get; set; }
 
         /// <summary>
         /// VỚI QUAN HỆ 1-1 THÌ PHẢI CẤU HÌNH ĐỂ EF CORE BIẾT ĐẶT KHÓA NGOẠI Ở BẢNG NÀO

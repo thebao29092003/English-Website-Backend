@@ -1,5 +1,7 @@
 
 using CloudinaryDotNet;
+using Hangfire;
+using Hangfire.SqlServer;
 using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services;
 using English.Website.Application.Services.IServices;
@@ -16,6 +18,10 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
 using Serilog.Sinks.OpenTelemetry;
+using System.Security.Claims;
+using System.Threading.RateLimiting;
+using englishWebSite.API.APIPayload;
+using Microsoft.AspNetCore.HttpOverrides;
 
 namespace English.Website.Api.Extensions
 {
@@ -27,7 +33,11 @@ namespace English.Website.Api.Extensions
 
             ServiceInternal(services);
 
+            ServiceHangfire(services, configuration);
+
             ServiceHttp(services);
+
+            ServiceRateLimiter(services, configuration);
 
             // register authentication
             ServiceAuth(services, configuration);
@@ -38,6 +48,21 @@ namespace English.Website.Api.Extensions
             services.AddSingleton(new Cloudinary(CLOUDINARY_URL));
 
             ServiceSeriLogGrafata(services, configuration);
+
+            services.AddHealthChecks();
+
+            ServiceGetReadIP(services);
+
+        }
+
+        private static void ServiceGetReadIP(IServiceCollection services)
+        {
+            services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                options.KnownNetworks.Clear(); // Xóa danh sách mạng đã biết để chấp nhận tất cả các mạng
+                options.KnownProxies.Clear();  // Xóa danh sách proxy đã biết để chấp nhận tất cả các proxy
+            });
         }
 
         private static void ServiceSeriLogGrafata(IServiceCollection services, IConfiguration configuration)
@@ -48,6 +73,7 @@ namespace English.Website.Api.Extensions
                 .MinimumLevel.Information()
                 .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
                 .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
+                .MinimumLevel.Override("System.Net.Http.HttpClient", Serilog.Events.LogEventLevel.Warning)
                 .WriteTo.Console() // Ghi log ra màn hình Console local bằng Serilog
                 .WriteTo.OpenTelemetry(options =>
                 {
@@ -137,6 +163,23 @@ namespace English.Website.Api.Extensions
 
                     options.Events = new JwtBearerEvents
                     {
+                        // SignalR WebSocket không thể gửi header Authorization,
+                        // nên client gửi token qua query string ?access_token=xxx
+                        // Event này chạy TRƯỚC khi JWT middleware xác thực,
+                        // giúp "chuyển" token từ query string vào context để middleware đọc được.
+                        OnMessageReceived = context =>
+                        {
+                            var accessToken = context.Request.Query["access_token"];
+                            var path = context.HttpContext.Request.Path;
+
+                            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                            {
+                                context.Token = accessToken;
+                            }
+
+                            return Task.CompletedTask;
+                        },
+
                         // Sự kiện OnTokenValidated chạy ngay sau khi token đã vượt qua các bước kiểm tra cơ bản ở trên
                         OnTokenValidated = async context =>
                         {
@@ -215,6 +258,7 @@ namespace English.Website.Api.Extensions
             services.AddHttpClient<IDeepSeekService, DeepSeekService>();
             services.AddHttpClient<IAssemblyAIService, AssemblyAIService>();
             services.AddHttpClient<IBackendPythonService, BackendPythonService>();
+            services.AddHttpClient<ITurnstileService, TurnstileService>();
         }
 
         private static void ServiceInternal(IServiceCollection services)
@@ -227,20 +271,22 @@ namespace English.Website.Api.Extensions
             services.AddScoped<IUserContextService, UserContextService>();
             services.AddScoped<ICloudinaryService, CloudinaryService>();
             services.AddScoped<AISpeechToTextService>();
-            services.AddScoped<ICloudinaryService, CloudinaryService>();
-            services.AddScoped<HomeService>();
+            services.AddScoped<AudioService>();
+            services.AddScoped<StatisticService>();
+            services.AddScoped<ContactService>();
         }
 
         private static void ServiceGeneric(IServiceCollection services, IConfiguration configuration)
         {
             services.AddControllers();
+            services.AddSignalR();
 
             services.AddEndpointsApiExplorer();
             services.AddSwaggerGen();
 
             // 1. Đăng ký DbContext
             services.AddDbContext<EnglishDBContext>(options =>
-                options.UseSqlServer(configuration.GetConnectionString("englistWebsite")));
+                options.UseSqlServer(configuration.GetConnectionString("EnglistWebsite")));
 
             // 3. Đăng ký AutoMapper
             // cfg => { } để viết riêng map thôi mình có file riêng rồi nên không cần
@@ -273,7 +319,87 @@ namespace English.Website.Api.Extensions
             */
             services.AddProblemDetails();
         }
+
+        private static void ServiceHangfire(IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddHangfire(config => config
+                .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+                .UseSimpleAssemblyNameTypeSerializer()
+                .UseRecommendedSerializerSettings()
+                .UseSqlServerStorage(configuration.GetConnectionString("EnglistWebsite"), new SqlServerStorageOptions
+                {
+                    CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+                    SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+                    QueuePollInterval = TimeSpan.Zero,
+                    UseRecommendedIsolationLevel = true,
+                    DisableGlobalLocks = true
+                }));
+
+            // Kích hoạt Background Job Server [1.1]. Dòng này biến ứng dụng .NET của bạn thành một "Worker" thực thụ,
+            // chịu trách nhiệm lắng nghe SQL Server và trực tiếp thực thi các tác vụ ngầm khi đến giờ 
+            services.AddHangfireServer();
+        }
+
+        private static void ServiceRateLimiter(IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddRateLimiter(options =>
+            {
+                // Xử lý khi request vượt quá Rate Limit -> Trả về HTTP 429 Too Many Requests
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+                options.OnRejected = async (context, cancellationToken) =>
+                {
+                    context.HttpContext.Response.ContentType = "application/json";
+
+                    string message = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter)
+                        ? $"Vui lòng thử lại sau {retryAfter.TotalSeconds} giây."
+                        : "Quá nhiều yêu cầu. Vui lòng thử lại sau.";
+
+                    var response = new APIResponseBase
+                    {
+                        Success = false,
+                        Status = StatusCodes.Status429TooManyRequests,
+                        Message = message,
+                        EndPointCode = "rate_limit_exceeded",
+                        Value = null
+                    };
+
+                    await context.HttpContext.Response.WriteAsJsonAsync(response, cancellationToken);
+                };
+
+                // Policy 1: API Công cộng (Login, Register, Contact, ForgetPassword) ──► Fixed Window + IP (Bảo vệ vòng ngoài)
+                options.AddPolicy("PublicApiLimit", httpContext =>
+                {
+                    var clientIp = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown_ip";
+
+                    return RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: clientIp,
+                        factory: _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 10, // Giới hạn tối đa 10 request
+                            Window = TimeSpan.FromMinutes(1), // Trong khoảng thời gian 1 phút
+                            QueueLimit = 0 // Không xếp hàng, từ chối ngay lập tức khi vượt quá
+                        }
+                    );
+                });
+
+                // Policy 2: API Cần Đăng Nhập ──► Sliding Window + UserId qua Token (60 requests/phút, chia 3 đoạn)
+                options.AddPolicy("UserApiLimit", httpContext =>
+                {
+                    var userId = httpContext.User.FindFirstValue("UserId") ?? "unauthorized_user";
+
+                    return RateLimitPartition.GetSlidingWindowLimiter(
+                        partitionKey: userId,
+                        factory: _ => new SlidingWindowRateLimiterOptions
+                        {
+                            PermitLimit = 60,                 // Tối đa 60 request
+                            Window = TimeSpan.FromMinutes(1), // Trong khoảng thời gian 1 phút
+                            SegmentsPerWindow = 3,            // Phân thành 3 đoạn (mỗi đoạn 20 giây)
+                            QueueLimit = 0                    // Không xếp hàng, từ chối ngay lập tức khi vượt quá
+                        }
+                    );
+                });
+            });
+        }
     }
-
-
 }

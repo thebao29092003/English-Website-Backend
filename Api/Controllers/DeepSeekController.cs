@@ -1,9 +1,10 @@
-﻿using English.Website.Api.Dtos.AIDtos.DeepSeekDto;
+using English.Website.Api.Dtos.AIDtos.DeepSeekDto;
 using English.Website.Application.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Net;
-using whOperation.API.APIPayload;
+using englishWebSite.API.APIPayload;
 
 namespace English.Website.Api.Controllers
 {
@@ -20,6 +21,7 @@ namespace English.Website.Api.Controllers
 
         [HttpPost("chat")]
         [Authorize]
+        [EnableRateLimiting("UserApiLimit")]
         public async Task<IActionResult> RequestAI([FromBody] TranscriptRequestDto transcriptRequest)
         {
             var result = await _deepSeekService.CallDeepSeekApi(transcriptRequest);

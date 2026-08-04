@@ -9,6 +9,9 @@ namespace English.Website.Api.Dtos.AIDtos.DeepSeekDto
         public required TypeAnalyse Type { get; set; }
         public required Guid UserId { get; set; }
         public required Guid AISpeechToTextId { get; set; }
+
+        // dùng để cho signalR biết là đang phân tích bản ghi nào, để gửi kết quả về đúng chỗ
+        public Guid RecordingID { get; set; }
     }
 
     public class DeepSeekRequestDto

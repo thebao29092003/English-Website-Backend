@@ -1,16 +1,17 @@
-﻿using English.Website.Api.Dtos.AuthDtos;
-using English.Website.Api.Extensions.Helpers;
+using English.Website.Api.Dtos.AuthDtos;
 using English.Website.Application.Services;
-using Microsoft.AspNetCore.Authorization;
+using englishWebSite.API.APIPayload;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Net;
-using whOperation.API.APIPayload;
 
 namespace English.Website.Api.Controllers
 {
 
     [Route("api/forget-password")]
     [ApiController]
+    [EnableRateLimiting("PublicApiLimit")]
     public class ForgetPasswordController : ControllerBase
     {
         private readonly ForgetPasswordService _forgetPasswordService;
@@ -20,9 +21,11 @@ namespace English.Website.Api.Controllers
         }
 
         [HttpGet("send-otp")]
-        public async Task<IActionResult> SendRegisterOtp([FromQuery] string email)
+        public async Task<IActionResult> SendRegisterOtp([FromQuery] string email, [FromQuery] string? turnstileToken = null)
         {
-            await _forgetPasswordService.SendResetPasswordOtp(email);
+            var remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown_ip";
+
+            await _forgetPasswordService.SendResetPasswordOtp(email, turnstileToken, remoteIp);
             return Ok(new APIResponseBase
             {
                 Success = true,

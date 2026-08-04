@@ -1,7 +1,7 @@
-﻿using English.Website.Api.Extensions.Helpers;
+using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Services.IServices;
 using Microsoft.AspNetCore.Diagnostics;
-using whOperation.API.APIPayload;
+using englishWebSite.API.APIPayload;
 
 /*
 IExceptionHandler bắt buộc phải là Singleton (vì nó chạy ở tầng Middleware ngoài cùng).
@@ -109,20 +109,19 @@ namespace English.Website.Domain.Cores.Exceptions
             var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
 
 
-            string subject = "🚨 CẢNH BÁO LỖI HỆ THỐNG 500 - English Website";
+            string subject = "🚨 CẢNH BÁO LỖI HỆ THỐNG 500 - Engsteps";
+            string title = "Phát Hiện Lỗi Sập Nguồn Hệ Thống (HTTP 500)";
 
-            string body = $@"
-                <div style='font-family: Arial, sans-serif; line-height: 1.6;'>
-                    <h2 style='color: red;'>Phát hiện lỗi sập nguồn hệ thống (HTTP 500)</h2>
-                    <p><strong>Thời gian xảy ra (UTC):</strong> {DateTime.UtcNow:dd/MM/yyyy HH:mm:ss}</p>
-                    <p><strong>API Endpoint bị lỗi:</strong> <span style='background: #eee; padding: 2px 5px;'>{context?.Request.Method} {context?.Request.Path}</span></p>
-                    <p><strong>Nội dung lỗi:</strong> <span style='color: red; font-weight: bold;'>{exception.Message}</span></p>
-                    <hr/>
-                    <p><strong>Chi tiết Stack Trace (Dòng code bị lỗi):</strong></p>
-                    <pre style='background: #f4f4f4; padding: 15px; border-left: 4px solid red; overflow-x: auto; font-family: Consolas, monospace;'>{exception.StackTrace}</pre>
-                </div>";
+            string content = $@"
+                <div style=""background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 20px;"">
+                    <p style=""color: #fca5a5; font-size: 14px; margin: 0 0 8px 0;""><strong>Thời gian xảy ra (UTC):</strong> {DateTime.UtcNow:dd/MM/yyyy HH:mm:ss}</p>
+                    <p style=""color: #fca5a5; font-size: 14px; margin: 0 0 8px 0;""><strong>API Endpoint bị lỗi:</strong> <span style=""background: rgba(255,255,255,0.1); padding: 3px 8px; border-radius: 6px; font-family: monospace;"">{context?.Request.Method} {context?.Request.Path}</span></p>
+                    <p style=""color: #ef4444; font-size: 15px; font-weight: bold; margin: 0;""><strong>Nội dung lỗi:</strong> {exception.Message}</p>
+                </div>
+                <p style=""color: #e2e8f0; font-size: 14px; font-weight: 600; margin-bottom: 8px;"">Chi tiết Stack Trace (Dòng code bị lỗi):</p>
+                <pre style=""background: #060412; color: #f87171; padding: 16px; border-radius: 10px; border-left: 4px solid #ef4444; font-family: Consolas, Monaco, monospace; font-size: 12px; line-height: 1.5; overflow-x: auto; white-space: pre-wrap;"">{exception.StackTrace}</pre>";
 
-            await emailService.SendEmailAsync(adminEmail!, subject, body);
+            await emailService.SendTemplatedEmailAsync(adminEmail!, subject, title, content);
         }
     }
 

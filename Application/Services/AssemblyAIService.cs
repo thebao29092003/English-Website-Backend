@@ -1,12 +1,15 @@
 using English.Website.Api.Dtos.AIDtos.AssemblyAIDto;
 using English.Website.Api.Dtos.AIDtos.AzureSpeechDto;
+using English.Website.Api.Dtos.AIDtos.DeepSeekDto;
 using English.Website.Api.Extensions.Helpers;
+using English.Website.Api.Hubs;
 using English.Website.Application.Services.IServices;
 using English.Website.Domain.Constants;
 using English.Website.Domain.DatabaseContext;
 using English.Website.Domain.Entities.AI.AIModelAudio;
-using English.Website.Api.Dtos.AIDtos.DeepSeekDto; 
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Concurrent;
 using System.Text.Json;
 
 namespace English.Website.Application.Services
@@ -19,12 +22,16 @@ namespace English.Website.Application.Services
         private readonly EnglishDBContext _englishDBContext;
         private readonly HttpClient _httpClient;
         private readonly IDeepSeekService _deepSeekService;
+        private readonly IHubContext<AudioProcessingHub> _hubContext;
+        private static readonly ConcurrentDictionary<string, byte> _activeProcessing =
+            new ConcurrentDictionary<string, byte>();
 
         public AssemblyAIService(
             IConfiguration configuration,
             HttpClient httpClient,
             EnglishDBContext englishDBContext,
-            IDeepSeekService deepSeekService
+            IDeepSeekService deepSeekService,
+            IHubContext<AudioProcessingHub> hubContext
         )
         {
             _httpClient = httpClient;
@@ -33,50 +40,93 @@ namespace English.Website.Application.Services
             _webhookUrl = configuration["WebHook:AssemblyAI:Url"]!;
             _englishDBContext = englishDBContext;
             _deepSeekService = deepSeekService;
+            _hubContext = hubContext;
         }
 
         public async Task GetDataAssemblyAI(string transcriptId)
         {
-            AssemblyAIResponseDto assemblyAiResult = await CallAPIGetDataAssemblyAI(transcriptId);
-
-            var speechToText = await _englishDBContext.AISpeechToText
-                .FirstOrDefaultAsync(s => s.AssemblyAIId == transcriptId)
-                ?? throw new BadRequestException($"AISpeechToText record with AssemblyAiId '{transcriptId}' was not found");
-
-            var words = assemblyAiResult.Words;
-            var audioDuration = assemblyAiResult.AudioDuration;
-            var transcriptResult = assemblyAiResult.Text;
-
-            double wpm = (words?.Count ?? 0) / ((audioDuration ?? 0) / 60.0);
-
-            var fluencyAnalysisResult = CalculateFluencyScore(words, audioDuration);
-
-            speechToText.AITranscript = transcriptResult;
-            speechToText.FluencyScore = fluencyAnalysisResult.Score;
-            speechToText.FluencyErrorsJson = JsonSerializer.Serialize(fluencyAnalysisResult.Errors);
-            speechToText.OverallConfidence = assemblyAiResult.Confidence ?? 0.0;
-            speechToText.WordPerMinute = (int)Math.Round(wpm);
-            speechToText.WordsJson = JsonSerializer.Serialize(words);
-
-            speechToText.AudioUsage = new AudioUsage
+            var key = transcriptId.ToLowerInvariant();
+            if (!_activeProcessing.TryAdd(key, 0))
             {
-                UserId = speechToText.UserId,
-                AIModelAudioId = 1,
-                CalculatedCost = (0.15m / 3600m) * (decimal)(audioDuration ?? 0)
-            };
-
-            await _englishDBContext.SaveChangesAsync();
-
-            if (speechToText.TypeAnalyse != TypeAnalyse.NOT && transcriptResult != null)
-            {
-                var result = await _deepSeekService.CallDeepSeekApi(new TranscriptRequestDto
-                {
-                    Type = speechToText.TypeAnalyse,
-                    UserPrompt = transcriptResult,
-                    AISpeechToTextId = speechToText.AISpeechToTextId,
-                    UserId = speechToText.UserId,
-                });
+                // Đang được xử lý song song bởi luồng khác, thoát để tránh trùng lặp
+                return;
             }
+
+            try
+            {
+                AssemblyAIResponseDto assemblyAiResult = await CallAPIGetDataAssemblyAI(transcriptId);
+                
+                var speechToText = await _englishDBContext.AISpeechToText
+                    .Include(s => s.AudioUsage)
+                    .FirstOrDefaultAsync(s => s.AssemblyAIId == transcriptId)
+                    ?? throw new BadRequestException($"AISpeechToText record with AssemblyAiId '{transcriptId}' was not found");
+
+                var words = assemblyAiResult.Words;
+                var audioDuration = assemblyAiResult.AudioDuration;
+                var transcriptResult = assemblyAiResult.Text;
+
+                double wpm = (words?.Count ?? 0) / ((audioDuration ?? 0) / 60.0);
+
+                var fluencyAnalysisResult = CalculateFluencyScore(words, audioDuration);
+
+                speechToText.AITranscript = transcriptResult;
+                speechToText.FluencyScore = fluencyAnalysisResult.Score;
+                speechToText.FluencyErrorsJson = JsonSerializer.Serialize(fluencyAnalysisResult.Errors);
+                speechToText.OverallConfidence = assemblyAiResult.Confidence ?? 0.0;
+                speechToText.WordPerMinute = (int)Math.Round(wpm);
+                speechToText.WordsJson = JsonSerializer.Serialize(words);
+
+                // sẽ có trường hợp backgroud task chạy lại nhiều lần lên khi đó ta sẽ update lại 
+                // chứ nếu thêm mới thì bị trùng key AISpeechToTextId => lỗi vì AudioUsage có quan hệ 1:1 với AISpeechToText
+                if (speechToText.AudioUsage != null)
+                {
+                    speechToText.AudioUsage.UserId = speechToText.UserId;
+                    speechToText.AudioUsage.AIModelAudioId = 1;
+                    speechToText.AudioUsage.CalculatedCost = (0.15m / 3600m) * (decimal)(audioDuration ?? 0);
+                }
+                else
+                {
+                    speechToText.AudioUsage = new AudioUsage
+                    {
+                        UserId = speechToText.UserId,
+                        AIModelAudioId = 1,
+                        CalculatedCost = (0.15m / 3600m) * (decimal)(audioDuration ?? 0)
+                    };
+                }
+
+                await _englishDBContext.SaveChangesAsync();
+
+                // Notify via SignalR to user group
+                await _hubContext.Clients.Group(speechToText.UserId.ToString().ToLowerInvariant()).SendAsync("ReceiveAudioStatus", new
+                {
+                    recordingId = speechToText.RecordingId,
+                    status = "Fluency_Analyzed",
+                    data = new
+                    {
+                        fluencyScore = fluencyAnalysisResult.Score,
+                        confidenceScore = assemblyAiResult?.Confidence == null ? 0 : Math.Round((decimal)assemblyAiResult.Confidence * 100),
+                        aiTranscript = transcriptResult
+                    }
+                });
+
+                if (speechToText.TypeAnalyse != TypeAnalyse.NOT && transcriptResult != null)
+                {
+                    await _deepSeekService.CallDeepSeekApi(new TranscriptRequestDto
+                    {
+                        Type = speechToText.TypeAnalyse,
+                        UserPrompt = transcriptResult,
+                        AISpeechToTextId = speechToText.AISpeechToTextId,
+                        UserId = speechToText.UserId,
+                        RecordingID = speechToText.RecordingId
+                    });
+
+                }
+            }
+            finally
+            {
+                _activeProcessing.TryRemove(key, out _);
+            }
+
         }
 
         public async Task<AssemblyAIResponseDto> CallAPIGetDataAssemblyAI(string transcriptId)
@@ -240,7 +290,7 @@ namespace English.Website.Application.Services
             // Giới hạn điểm số nằm trong thang điểm từ 10 đến 100
             finalScore = Math.Clamp(finalScore, 10.0, 100.0);
 
-            result.Score = Math.Round(finalScore, 1);
+            result.Score = Math.Round(finalScore);
             return result;
         }
     }

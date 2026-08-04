@@ -1,4 +1,4 @@
-﻿using English.Website.Api.Dtos.AIDtos.DeepSeekDto;
+using English.Website.Api.Dtos.AIDtos.DeepSeekDto;
 using English.Website.Api.Extensions.Helpers;
 using English.Website.Application.Extend;
 using English.Website.Application.Services.IServices;
@@ -9,6 +9,9 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
+using English.Website.Api.Hubs;
 
 namespace English.Website.Application.Services
 {
@@ -18,16 +21,20 @@ namespace English.Website.Application.Services
         private readonly EnglishDBContext _englishDBContext;
         private readonly HttpClient _httpClient;
 
+        private readonly IHubContext<AudioProcessingHub> _hubContext;
+
         public DeepSeekService(
             IConfiguration configuration,
             HttpClient httpClient,
             IUserContextService userContextService,
-            EnglishDBContext englishDBContext
+            EnglishDBContext englishDBContext,
+            IHubContext<AudioProcessingHub> hubContext
         )
         {
             _httpClient = httpClient;
             _apiKey = configuration["AI:DeepSeekApiKey"]!;
             _englishDBContext = englishDBContext;
+            _hubContext = hubContext;
         }
 
         private HttpRequestMessage PrepareCallApi(string systemPrompt, string userPrompt, Guid userId)
@@ -171,26 +178,6 @@ namespace English.Website.Application.Services
             using var transaction = await _englishDBContext.Database.BeginTransactionAsync();
             try
             {
-                // Khởi tạo bản ghi TokenUsage tổng
-                TokenUsage tokenUsage = new TokenUsage
-                {
-                    AIModelTextId = 1, // Model ID của bạn
-                    UserId = userId,
-                    TotalTokens = totalTokens,
-                    PromptTokens = promptTokens,
-                    CacheMissTokens = cacheMissTokens,
-                    CacheHitTokens = cacheHitTokens,
-                    CompletionTokens = completionTokens,
-                    ReasoningTokens = reasoningTokens,
-
-                    // Tính tổng chi phí dựa trên tổng token đã gom nhóm
-                    CalculatedCost = ((decimal)0.14 * cacheMissTokens +
-                                      (decimal)0.0028 * cacheHitTokens +
-                                      (decimal)0.28 * completionTokens) / 1000000
-                };
-
-                await _englishDBContext.TokenUsage.AddAsync(tokenUsage);
-
                 var jsonOptions = new JsonSerializerOptions
                 {
                     Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
@@ -201,21 +188,99 @@ namespace English.Website.Application.Services
                 // khi lấy ra trả cho user nhớ De
                 string mergedJsonContent = JsonSerializer.Serialize(mergedResultDto, jsonOptions);
 
-                AIAnalysis aiAnalysis = new()
-                {
-                    UserId = userId,
-                    TokenUsage = tokenUsage,
-                    UserTranscript = userPrompt, // Transcript gốc của user
-                    AnalysisContentJson = mergedJsonContent ?? "AI not response",
-                    AISpeechToTextId = aiSpeechToTextId,
-                    OverallGrammarScore = mergedResultDto.GrammarAnalysis?.OverallGrammarScore,
-                    OverallVocabScore = mergedResultDto.VocabularyAnalysis?.OverallVocabScore,
-                };
+                var existingAnalysis = await _englishDBContext.AIAnalysis
+                    .Include(a => a.TokenUsage)
+                    .FirstOrDefaultAsync(a => a.AISpeechToTextId == aiSpeechToTextId);
 
-                await _englishDBContext.AIAnalysis.AddAsync(aiAnalysis);
+                // hàm này cũng nằm trong backgroud jos nên phải check null, nếu không có thì tạo mới, nếu có thì update lại
+                if (existingAnalysis != null)
+                {
+                    existingAnalysis.UserTranscript = userPrompt;
+                    existingAnalysis.AnalysisContentJson = mergedJsonContent ?? "AI not response";
+                    existingAnalysis.OverallGrammarScore = mergedResultDto.GrammarAnalysis?.OverallGrammarScore;
+                    existingAnalysis.OverallVocabScore = mergedResultDto.VocabularyAnalysis?.OverallVocabScore;
+
+                    if (existingAnalysis.TokenUsage != null)
+                    {
+                        existingAnalysis.TokenUsage.TotalTokens = totalTokens;
+                        existingAnalysis.TokenUsage.PromptTokens = promptTokens;
+                        existingAnalysis.TokenUsage.CacheMissTokens = cacheMissTokens;
+                        existingAnalysis.TokenUsage.CacheHitTokens = cacheHitTokens;
+                        existingAnalysis.TokenUsage.CompletionTokens = completionTokens;
+                        existingAnalysis.TokenUsage.ReasoningTokens = reasoningTokens;
+                        existingAnalysis.TokenUsage.CalculatedCost = ((decimal)0.14 * cacheMissTokens +
+                                                                      (decimal)0.0028 * cacheHitTokens +
+                                                                      (decimal)0.28 * completionTokens) / 1000000;
+                    }
+                    else
+                    {
+                        existingAnalysis.TokenUsage = new TokenUsage
+                        {
+                            AIModelTextId = 1,
+                            UserId = userId,
+                            TotalTokens = totalTokens,
+                            PromptTokens = promptTokens,
+                            CacheMissTokens = cacheMissTokens,
+                            CacheHitTokens = cacheHitTokens,
+                            CompletionTokens = completionTokens,
+                            ReasoningTokens = reasoningTokens,
+                            CalculatedCost = ((decimal)0.14 * cacheMissTokens +
+                                              (decimal)0.0028 * cacheHitTokens +
+                                              (decimal)0.28 * completionTokens) / 1000000
+                        };
+                    }
+                }
+                else
+                {
+                    // Khởi tạo bản ghi TokenUsage tổng
+                    TokenUsage tokenUsage = new TokenUsage
+                    {
+                        AIModelTextId = 1, // Model ID của bạn
+                        UserId = userId,
+                        TotalTokens = totalTokens,
+                        PromptTokens = promptTokens,
+                        CacheMissTokens = cacheMissTokens,
+                        CacheHitTokens = cacheHitTokens,
+                        CompletionTokens = completionTokens,
+                        ReasoningTokens = reasoningTokens,
+
+                        // Tính tổng chi phí dựa trên tổng token đã gom nhóm
+                        CalculatedCost = ((decimal)0.14 * cacheMissTokens +
+                                          (decimal)0.0028 * cacheHitTokens +
+                                          (decimal)0.28 * completionTokens) / 1000000
+                    };
+
+                    await _englishDBContext.TokenUsage.AddAsync(tokenUsage);
+
+                    AIAnalysis aiAnalysis = new()
+                    {
+                        UserId = userId,
+                        TokenUsage = tokenUsage,
+                        UserTranscript = userPrompt, // Transcript gốc của user
+                        AnalysisContentJson = mergedJsonContent ?? "AI not response",
+                        AISpeechToTextId = aiSpeechToTextId,
+                        OverallGrammarScore = mergedResultDto.GrammarAnalysis?.OverallGrammarScore,
+                        OverallVocabScore = mergedResultDto.VocabularyAnalysis?.OverallVocabScore,
+                    };
+
+                    await _englishDBContext.AIAnalysis.AddAsync(aiAnalysis);
+                }
 
                 await _englishDBContext.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+
+                await _hubContext.Clients.Group(userId.ToString().ToLowerInvariant()).SendAsync("ReceiveAudioStatus", new
+                {
+                    recordingId = deepSeekRequest.RecordingID,
+                    status = "Analysis_Completed",
+                    data = new
+                    {
+                        overallGrammarScore = mergedResultDto.GrammarAnalysis?.OverallGrammarScore,
+                        overallVocabScore = mergedResultDto.VocabularyAnalysis?.OverallVocabScore
+                    }
+                });
+
             }
             catch (Exception ex)
             {
