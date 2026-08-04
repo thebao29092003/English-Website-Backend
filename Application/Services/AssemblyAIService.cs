@@ -55,8 +55,9 @@ namespace English.Website.Application.Services
             try
             {
                 AssemblyAIResponseDto assemblyAiResult = await CallAPIGetDataAssemblyAI(transcriptId);
-
+                
                 var speechToText = await _englishDBContext.AISpeechToText
+                    .Include(s => s.AudioUsage)
                     .FirstOrDefaultAsync(s => s.AssemblyAIId == transcriptId)
                     ?? throw new BadRequestException($"AISpeechToText record with AssemblyAiId '{transcriptId}' was not found");
 
@@ -75,12 +76,23 @@ namespace English.Website.Application.Services
                 speechToText.WordPerMinute = (int)Math.Round(wpm);
                 speechToText.WordsJson = JsonSerializer.Serialize(words);
 
-                speechToText.AudioUsage = new AudioUsage
+                // sẽ có trường hợp backgroud task chạy lại nhiều lần lên khi đó ta sẽ update lại 
+                // chứ nếu thêm mới thì bị trùng key AISpeechToTextId => lỗi vì AudioUsage có quan hệ 1:1 với AISpeechToText
+                if (speechToText.AudioUsage != null)
                 {
-                    UserId = speechToText.UserId,
-                    AIModelAudioId = 1,
-                    CalculatedCost = (0.15m / 3600m) * (decimal)(audioDuration ?? 0)
-                };
+                    speechToText.AudioUsage.UserId = speechToText.UserId;
+                    speechToText.AudioUsage.AIModelAudioId = 1;
+                    speechToText.AudioUsage.CalculatedCost = (0.15m / 3600m) * (decimal)(audioDuration ?? 0);
+                }
+                else
+                {
+                    speechToText.AudioUsage = new AudioUsage
+                    {
+                        UserId = speechToText.UserId,
+                        AIModelAudioId = 1,
+                        CalculatedCost = (0.15m / 3600m) * (decimal)(audioDuration ?? 0)
+                    };
+                }
 
                 await _englishDBContext.SaveChangesAsync();
 

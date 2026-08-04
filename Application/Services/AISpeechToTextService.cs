@@ -101,7 +101,7 @@ namespace English.Website.Application.Services
                     status = "Pronunciation_Analyzed",
                     data = new
                     {
-                        pronunciationScore = compareResult?.OverallAccuracy
+                        pronunciationScore = compareResult?.OverallAccuracy == null ? 0 : Math.Round(compareResult.OverallAccuracy * 100),
                     }
                 });
             }

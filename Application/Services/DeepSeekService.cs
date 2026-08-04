@@ -178,26 +178,6 @@ namespace English.Website.Application.Services
             using var transaction = await _englishDBContext.Database.BeginTransactionAsync();
             try
             {
-                // Khởi tạo bản ghi TokenUsage tổng
-                TokenUsage tokenUsage = new TokenUsage
-                {
-                    AIModelTextId = 1, // Model ID của bạn
-                    UserId = userId,
-                    TotalTokens = totalTokens,
-                    PromptTokens = promptTokens,
-                    CacheMissTokens = cacheMissTokens,
-                    CacheHitTokens = cacheHitTokens,
-                    CompletionTokens = completionTokens,
-                    ReasoningTokens = reasoningTokens,
-
-                    // Tính tổng chi phí dựa trên tổng token đã gom nhóm
-                    CalculatedCost = ((decimal)0.14 * cacheMissTokens +
-                                      (decimal)0.0028 * cacheHitTokens +
-                                      (decimal)0.28 * completionTokens) / 1000000
-                };
-
-                await _englishDBContext.TokenUsage.AddAsync(tokenUsage);
-
                 var jsonOptions = new JsonSerializerOptions
                 {
                     Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
@@ -208,18 +188,83 @@ namespace English.Website.Application.Services
                 // khi lấy ra trả cho user nhớ De
                 string mergedJsonContent = JsonSerializer.Serialize(mergedResultDto, jsonOptions);
 
-                AIAnalysis aiAnalysis = new()
-                {
-                    UserId = userId,
-                    TokenUsage = tokenUsage,
-                    UserTranscript = userPrompt, // Transcript gốc của user
-                    AnalysisContentJson = mergedJsonContent ?? "AI not response",
-                    AISpeechToTextId = aiSpeechToTextId,
-                    OverallGrammarScore = mergedResultDto.GrammarAnalysis?.OverallGrammarScore,
-                    OverallVocabScore = mergedResultDto.VocabularyAnalysis?.OverallVocabScore,
-                };
+                var existingAnalysis = await _englishDBContext.AIAnalysis
+                    .Include(a => a.TokenUsage)
+                    .FirstOrDefaultAsync(a => a.AISpeechToTextId == aiSpeechToTextId);
 
-                await _englishDBContext.AIAnalysis.AddAsync(aiAnalysis);
+                // hàm này cũng nằm trong backgroud jos nên phải check null, nếu không có thì tạo mới, nếu có thì update lại
+                if (existingAnalysis != null)
+                {
+                    existingAnalysis.UserTranscript = userPrompt;
+                    existingAnalysis.AnalysisContentJson = mergedJsonContent ?? "AI not response";
+                    existingAnalysis.OverallGrammarScore = mergedResultDto.GrammarAnalysis?.OverallGrammarScore;
+                    existingAnalysis.OverallVocabScore = mergedResultDto.VocabularyAnalysis?.OverallVocabScore;
+
+                    if (existingAnalysis.TokenUsage != null)
+                    {
+                        existingAnalysis.TokenUsage.TotalTokens = totalTokens;
+                        existingAnalysis.TokenUsage.PromptTokens = promptTokens;
+                        existingAnalysis.TokenUsage.CacheMissTokens = cacheMissTokens;
+                        existingAnalysis.TokenUsage.CacheHitTokens = cacheHitTokens;
+                        existingAnalysis.TokenUsage.CompletionTokens = completionTokens;
+                        existingAnalysis.TokenUsage.ReasoningTokens = reasoningTokens;
+                        existingAnalysis.TokenUsage.CalculatedCost = ((decimal)0.14 * cacheMissTokens +
+                                                                      (decimal)0.0028 * cacheHitTokens +
+                                                                      (decimal)0.28 * completionTokens) / 1000000;
+                    }
+                    else
+                    {
+                        existingAnalysis.TokenUsage = new TokenUsage
+                        {
+                            AIModelTextId = 1,
+                            UserId = userId,
+                            TotalTokens = totalTokens,
+                            PromptTokens = promptTokens,
+                            CacheMissTokens = cacheMissTokens,
+                            CacheHitTokens = cacheHitTokens,
+                            CompletionTokens = completionTokens,
+                            ReasoningTokens = reasoningTokens,
+                            CalculatedCost = ((decimal)0.14 * cacheMissTokens +
+                                              (decimal)0.0028 * cacheHitTokens +
+                                              (decimal)0.28 * completionTokens) / 1000000
+                        };
+                    }
+                }
+                else
+                {
+                    // Khởi tạo bản ghi TokenUsage tổng
+                    TokenUsage tokenUsage = new TokenUsage
+                    {
+                        AIModelTextId = 1, // Model ID của bạn
+                        UserId = userId,
+                        TotalTokens = totalTokens,
+                        PromptTokens = promptTokens,
+                        CacheMissTokens = cacheMissTokens,
+                        CacheHitTokens = cacheHitTokens,
+                        CompletionTokens = completionTokens,
+                        ReasoningTokens = reasoningTokens,
+
+                        // Tính tổng chi phí dựa trên tổng token đã gom nhóm
+                        CalculatedCost = ((decimal)0.14 * cacheMissTokens +
+                                          (decimal)0.0028 * cacheHitTokens +
+                                          (decimal)0.28 * completionTokens) / 1000000
+                    };
+
+                    await _englishDBContext.TokenUsage.AddAsync(tokenUsage);
+
+                    AIAnalysis aiAnalysis = new()
+                    {
+                        UserId = userId,
+                        TokenUsage = tokenUsage,
+                        UserTranscript = userPrompt, // Transcript gốc của user
+                        AnalysisContentJson = mergedJsonContent ?? "AI not response",
+                        AISpeechToTextId = aiSpeechToTextId,
+                        OverallGrammarScore = mergedResultDto.GrammarAnalysis?.OverallGrammarScore,
+                        OverallVocabScore = mergedResultDto.VocabularyAnalysis?.OverallVocabScore,
+                    };
+
+                    await _englishDBContext.AIAnalysis.AddAsync(aiAnalysis);
+                }
 
                 await _englishDBContext.SaveChangesAsync();
                 await transaction.CommitAsync();
