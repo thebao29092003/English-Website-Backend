@@ -20,7 +20,7 @@ jobs:
       - name: Tạo tên Image dạng chữ thường
         id: prep
         run: |
-          IMAGE_PATH="ghcr.io/${{ github.repository_owner }}/english-website-backend-product"
+          IMAGE_PATH="ghcr.io/${{ github.repository_owner }}/dot-net-product"
           echo "GHCR_IMAGE=$(echo $IMAGE_PATH | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Thiết lập Docker Buildx
@@ -67,14 +67,14 @@ jobs:
             echo "${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}" | docker login ghcr.io -u ${{ secrets.GH_USERNAME }} --password-stdin
 
             # 3. Tạo biến chứa tên image dạng chữ thường
-            IMAGE_PATH="ghcr.io/${{ secrets.GH_USERNAME }}/english-website-backend-product"
+            IMAGE_PATH="ghcr.io/${{ secrets.GH_USERNAME }}/dot-net-product"
             GHCR_IMAGE=$(echo $IMAGE_PATH | tr '[:upper:]' '[:lower:]')
 
             # 4. Kéo Image mới nhất từ GHCR về VPS
             docker pull $GHCR_IMAGE:product
 
             # 5. Khởi động lại dịch vụ backend (Docker Compose tự ánh xạ sang Image mới kéo về)
-            docker compose up -d --no-deps english-website-backend-product
+            docker compose up -d --no-deps dot-net-product
 
             # In ra danh sách trạng thái của container để kiểm tra trực tiếp trên GitHub Actions Log
             echo "=== TRẠNG THÁI CONTAINER SAU KHI DEPLOY ==="
