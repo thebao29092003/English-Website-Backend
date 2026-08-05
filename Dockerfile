@@ -20,6 +20,4 @@ RUN dotnet publish "./English.Website.csproj" -c $BUILD_CONFIGURATION -o /app/pu
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-HEALTHCHECK --interval=40s --timeout=6s --start-period=10s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 ENTRYPOINT ["dotnet", "English.Website.dll"]
