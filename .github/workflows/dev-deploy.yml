@@ -61,7 +61,7 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             # 1. Di chuyển vào thư mục chứa docker-compose.yml bạn tự quản lý trên VPS
-            cd /app/engsteps
+            cd /home/deployer/engsteps-dev
 
             # 2. Đăng nhập vào GHCR trên VPS bằng Token cá nhân (PAT) bạn cấu hình trong Secrets
             echo "${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}" | docker login ghcr.io -u ${{ secrets.GH_USERNAME }} --password-stdin
