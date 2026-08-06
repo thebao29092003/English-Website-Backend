@@ -74,7 +74,7 @@ jobs:
             docker pull $GHCR_IMAGE:dev
 
             # 5. Khởi động lại dịch vụ backend (Docker Compose tự ánh xạ sang Image mới kéo về)
-            docker compose up -d --no-deps dot-net-dev
+            docker compose up -d --no-deps backend
 
             # In ra danh sách trạng thái của container để kiểm tra trực tiếp trên GitHub Actions Log
             echo "=== TRẠNG THÁI CONTAINER SAU KHI DEPLOY ==="
